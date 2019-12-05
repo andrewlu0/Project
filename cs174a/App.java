@@ -233,9 +233,7 @@ public class App implements Testable
 			return "1";
 		}
 	}
-	/**
-	 * Sets date
-	 */
+	
 	@Override
 	public String setDate( int year, int month, int day )
 	{
@@ -256,14 +254,43 @@ public class App implements Testable
 	}
 	@Override
 	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
-		return "0 stub";
+		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',"+initialTopUp+",\'"+tin+"\',0,0)";
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery(query);
+			withdraw(linkedId,initialTopUp);
+			return "0 " + id + " AccountType.POCKET " + initialTopUp + " " + tin;
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
 	}
+	
 	@Override
 	public String createCustomer( String accountId, String tin, String name, String address ){
-		return "0 stub";
+		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address+"\',1717)";
+		String create_own = "insert into own(aid,tid) values (\'"+accountId+"\',\'"+tin+"\')";
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery(create_c);
+			statement.executeQuery(create_own);
+			return "0";
+		}
+		catch( SQLException e )
+		{
+			System.err.println(e.getMessage());
+			return "1";
+		}
 	}
 	@Override
 	public String deposit( String accountId, double amount )
+	{
+		return "0stub";
+	}
+	@Override
+	public String withdraw( String accountId, double amount )
 	{
 		return "0stub";
 	}
@@ -288,15 +315,31 @@ public class App implements Testable
 	@Override
 	public String createCheckingSavingsAccount( final AccountType accountType, final String id, final double initialBalance, final String tin, final String name, final String address )
 	{
+		if (initialBalance < 1000){
+			System.err.println("Initial deposit must be >= 1000");
+			return "1";
+		}
+		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address+"\',1717)";
+		try( Statement statement = _connection.createStatement() )
+		{
+			ResultSet rs = statement.executeQuery("select * from customer where tid =\'" +tin+ "\'");
+			if (!rs.next()){
+				statement.executeQuery(create_c);
+			}
+		}
+		catch( SQLException e )
+		{
+			System.out.println("Customer already here");
+		}
 		double interest_rate;
 		if (accountType == AccountType.INTEREST_CHECKING) interest_rate = 3.0;
 		else if (accountType == AccountType.STUDENT_CHECKING) interest_rate = 0.0;
 		else interest_rate = 4.8;
-		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',"+initialBalance+",\'"+tin+"\',0,"+interest_rate+")";
-		System.out.println(query);
+		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',0,\'"+tin+"\',0,"+interest_rate+")";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
+			deposit(id,initialBalance);
 			return "0 " + id + " " + accountType + " " + initialBalance + " " + tin;
 		}
 		catch( SQLException e )

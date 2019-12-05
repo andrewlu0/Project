@@ -37,7 +37,8 @@ public class Main
 			System.out.println( r );
 
 			// Another example test.
-			r = app.createCheckingSavingsAccount( AccountType.INTEREST_CHECKING, "account1", 1234.56, "theTaxID", "Im YoungMing", "Known" );
+			r = app.createCheckingSavingsAccount( AccountType.INTEREST_CHECKING, "account6", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known" );
+			app.createPocketAccount("pocket3","checking",29.9,"bbb");
 			System.out.println( r );
 		}
 	}
