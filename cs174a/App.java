@@ -255,9 +255,11 @@ public class App implements Testable
 	@Override
 	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
 		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',"+initialTopUp+",\'"+tin+"\',0,0)";
+		String owns = "insert into own(\'"+id+"\',\'"+tin+"\')";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
+			statement.executeQuery(owns);
 			withdraw(linkedId,initialTopUp);
 			return "0 " + id + " AccountType.POCKET " + initialTopUp + " " + tin;
 		}
@@ -336,9 +338,11 @@ public class App implements Testable
 		else if (accountType == AccountType.STUDENT_CHECKING) interest_rate = 0.0;
 		else interest_rate = 4.8;
 		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',0,\'"+tin+"\',0,"+interest_rate+")";
+		String owns = "insert into own(\'"+id+"\',\'"+tin+"\')";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
+			statement.executeQuery(owns);
 			deposit(id,initialBalance);
 			return "0 " + id + " " + accountType + " " + initialBalance + " " + tin;
 		}
