@@ -24,7 +24,7 @@ public class Main
 													// constructor exists.
 		String r = app.initializeSystem();         // We'll always call this function before testing your system.
 		//System.out.println(app.dropTables());
-		//System.out.println(app.createTables());
+		System.out.println(app.createTables());
 		
 		
 		//System.out.println(app.setDate(2019,12,4));
@@ -37,8 +37,9 @@ public class Main
 			System.out.println( r );
 
 			// Another example test.
-			r = app.createCheckingSavingsAccount( AccountType.INTEREST_CHECKING, "account6", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known" );
-			app.createPocketAccount("pocket3","checking",29.9,"bbb");
+			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "account3", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
+			r = app.updateInterest(AccountType.INTEREST_CHECKING,2.1);
+			//app.createPocketAccount("pocket4","checking",29.9,"bbb");
 			System.out.println( r );
 		}
 	}
