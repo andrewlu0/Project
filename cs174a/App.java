@@ -9,6 +9,7 @@ import java.util.*;
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.lang.*;
+import java.text.SimpleDateFormat;
 
 /**
  * The most important class for your application.
@@ -26,6 +27,7 @@ public class App implements Testable
 	App()
 	{
 		// TODO: Any actions you need.
+		
 	}
 
 	/**
@@ -66,6 +68,7 @@ public class App implements Testable
 		info.put( OracleConnection.CONNECTION_PROPERTY_PASSWORD, DB_PASSWORD );
 		info.put( OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, "20" );
 
+		
 		try
 		{
 			final OracleDataSource ods = new OracleDataSource();
@@ -90,6 +93,7 @@ public class App implements Testable
 			System.err.println( e.getMessage() );
 			return "1";
 		}
+
 	}
 	/**
 	 * Drops all tables
@@ -101,16 +105,12 @@ public class App implements Testable
 			Arrays.asList("transaction", 
                           "account", 
                           "own",
-						  "ch_acct",
-						  "int_ch_acct",
-						  "st_ch_acct",
-						  "sav_acct",
-						  "poc_acct",
 						  "customer",
 						  "linked_to",
 						  "requests",
 						  "modifies",
-						  "system_date")); 
+						  "system_date"
+						)); 
 		try( Statement statement = _connection.createStatement() )
 		{
 			for (int i = 0; i < table_names.size(); i++){
@@ -137,16 +137,17 @@ public class App implements Testable
 							+"Addr CHAR(50)	NOT NULL,"
 							+"Pin CHAR(4)		DEFAULT 1717,"
 							+"PRIMARY KEY(tid))";
-		String create_account = "CREATE TABLE Account( aid INTEGER, bb_name CHAR(10) NOT NULL,"
-							+ "balance DECIMAL NOT NULL,"
-							+ "primary_owner CHAR(20),"
+		String create_account = "CREATE TABLE Account( aid char(20),"
+							+"bb_name CHAR(20) NOT NULL,"
+							+"balance DECIMAL NOT NULL,"
+							+"tid CHAR(20),"
 							+"is_closed INTEGER NOT NULL,"
 							+"interest_rate DECIMAL NOT NULL,"
 							+"flat_fee INTEGER,"
 							+"PRIMARY KEY (aid),"
-							+"FOREIGN KEY (primary_owner) REFERENCES Customer(tid))";
+							+"FOREIGN KEY (tid) REFERENCES Customer(tid))";
 		String create_own = "CREATE TABLE Own(" 
-							+"aid INTEGER,"
+							+"aid CHAR(20),"
 							+"tid CHAR(20),"
 							+"PRIMARY KEY(Aid, tid),"
 							+"FOREIGN KEY(Aid) REFERENCES Account(aid),"
@@ -165,21 +166,18 @@ public class App implements Testable
                        +"FOREIGN KEY (tid) REFERENCES Customer(tid),"
                        +"FOREIGN KEY (trid) REFERENCES Transaction(trid))";
 		String create_modifies = "CREATE TABLE Modifies( trid INTEGER,"
-                       +"aid INTEGER NOT NULL,"
+                       +"aid char(20) NOT NULL,"
                        +"PRIMARY KEY (trid, aid),"
                        +"FOREIGN KEY (trid) REFERENCES Transaction(trid),"
                        +"FOREIGN KEY (aid) REFERENCES Account(aid))";
 		String create_linked_to = "CREATE TABLE linked_to("
-						+"Poc_aid INTEGER,"
-						+"Aid INTEGER,"
+						+"Poc_aid CHAR(20),"
+						+"Aid CHAR(20),"
 						+"PRIMARY KEY(poc_aid, aid),"
 						+"FOREIGN KEY(poc_aid) REFERENCES account(aid),"
 						+"FOREIGN KEY(aid) REFERENCES account(aid))";
 		String create_system_date = "CREATE TABLE system_date("
-						+"year INTEGER NOT NULL,"
-						+"month INTEGER NOT NULL,"
-						+"day INTEGER NOT NULL,"
-						+"PRIMARY KEY (year,month,day))";
+						+"system_date DATE)";
 		
 		try( Statement statement = _connection.createStatement() )
 		{
@@ -191,6 +189,17 @@ public class App implements Testable
 			statement.executeQuery(create_modifies);
 			statement.executeQuery(create_linked_to);
 			statement.executeQuery(create_system_date);
+			//Set date to current date
+			Calendar calendar = Calendar.getInstance();
+			SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+			String date = formatter.format(calendar.getTime());
+			String day = date.substring(0,2);
+			String month = date.substring(3,5);
+			String year = date.substring(6,10);
+			
+			statement.executeQuery("delete from system_date");
+			String set_date = "insert into system_date(system_date) values (TO_DATE(\'" + year + "-" + month + "-" + day + "\',\'YYYY-MM-DD\'))";
+			statement.executeQuery(set_date);
 			return "0";
 		}
 		catch( SQLException e )
@@ -229,22 +238,20 @@ public class App implements Testable
 	@Override
 	public String setDate( int year, int month, int day )
 	{
+		String syear = String.valueOf(year);
+		String smonth = String.valueOf(month);
+		String sday = String.valueOf(day);
 		try( Statement statement = _connection.createStatement() )
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select aid, is_closed from account where is_closed=1" ) )
-			{
-				while( resultSet.next() )
-				{
-					result = result + " " + String.valueOf(resultSet.getInt(1));
-				}		
-			}
-			return result;
+			statement.executeQuery( "update system_date set system_date = TO_DATE(\'" + year + "-" + month + "-" + day + "\',\'YYYY-MM-DD\')");
+			return "0 " + year + "-" + month + "-" + day;
 		}
 		catch( final SQLException e )
 		{
 			System.err.println( e.getMessage() );
 			return "1";
 		}
+	
 	}
 	@Override
 	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
@@ -280,7 +287,23 @@ public class App implements Testable
 	@Override
 	public String createCheckingSavingsAccount( final AccountType accountType, final String id, final double initialBalance, final String tin, final String name, final String address )
 	{
-		return "0 " + id + " " + accountType + " " + initialBalance + " " + tin;
+		
+		double interest_rate;
+		if (accountType == AccountType.INTEREST_CHECKING) interest_rate = 3.0;
+		else if (accountType == AccountType.STUDENT_CHECKING) interest_rate = 0.0;
+		else interest_rate = 4.8;
+		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',"+initialBalance+",\'"+tin+"\',0,"+interest_rate+")";
+		System.out.println(query);
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery(query);
+			return "0 " + id + " " + accountType + " " + initialBalance + " " + tin;
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
 	}
 
 	public static void goodbye()
