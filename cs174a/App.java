@@ -5,7 +5,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Properties;
+import java.util.*;
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 
@@ -16,6 +16,7 @@ import oracle.jdbc.OracleConnection;
 public class App implements Testable
 {
 	private OracleConnection _connection;                   // Example connection object to your DB.
+	public static Scanner input = new Scanner(System.in);
 
 	/**
 	 * Default constructor.
@@ -41,7 +42,7 @@ public class App implements Testable
 						System.out.println( resultSet.getString( 1 ) + " " + resultSet.getString( 2 ) + " " );
 			}
 		}
-		catch( SQLException e )
+		catch( final SQLException e )
 		{
 			System.err.println( e.getMessage() );
 		}
@@ -59,20 +60,20 @@ public class App implements Testable
 		final String DB_PASSWORD = "5740170";
 
 		// Initialize your system.  Probably setting up the DB connection.
-		Properties info = new Properties();
+		final Properties info = new Properties();
 		info.put( OracleConnection.CONNECTION_PROPERTY_USER_NAME, DB_USER );
 		info.put( OracleConnection.CONNECTION_PROPERTY_PASSWORD, DB_PASSWORD );
 		info.put( OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, "20" );
 
 		try
 		{
-			OracleDataSource ods = new OracleDataSource();
+			final OracleDataSource ods = new OracleDataSource();
 			ods.setURL( DB_URL );
 			ods.setConnectionProperties( info );
 			_connection = (OracleConnection) ods.getConnection();
 
 			// Get the JDBC driver name and version.
-			DatabaseMetaData dbmd = _connection.getMetaData();
+			final DatabaseMetaData dbmd = _connection.getMetaData();
 			System.out.println( "Driver Name: " + dbmd.getDriverName() );
 			System.out.println( "Driver Version: " + dbmd.getDriverVersion() );
 
@@ -83,7 +84,7 @@ public class App implements Testable
 
 			return "0";
 		}
-		catch( SQLException e )
+		catch( final SQLException e )
 		{
 			System.err.println( e.getMessage() );
 			return "1";
@@ -202,8 +203,18 @@ public class App implements Testable
 	 * Another example.
 	 */
 	@Override
-	public String createCheckingSavingsAccount( AccountType accountType, String id, double initialBalance, String tin, String name, String address )
+	public String createCheckingSavingsAccount( final AccountType accountType, final String id, final double initialBalance, final String tin, final String name, final String address )
 	{
 		return "0 " + id + " " + accountType + " " + initialBalance + " " + tin;
 	}
+
+	public static void goodbye()
+	{
+		System.out.println("Thank you for using our Banking Application! Goodbye!");
+		exit(0);
+	}
+
+	//-----------------------------------------------------------------------------------
+
+	
 }
