@@ -143,4 +143,6 @@ interface Testable
 	 *         id1 id2 ... idn is a list of space-separated closed account IDs.
 	 */
 	String listClosedAccounts();
+
+	String withdraw( String accountId, double amount );
 }
