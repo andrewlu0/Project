@@ -38,7 +38,8 @@ public class App implements Testable
 			try( ResultSet resultSet = statement.executeQuery( "select owner, table_name from all_tables" ) )
 			{
 				while( resultSet.next() )
-					System.out.println( resultSet.getString( 1 ) + " " + resultSet.getString( 2 ) + " " );
+					if (resultSet.getString(1).equals("C##ALUO"))
+						System.out.println( resultSet.getString( 1 ) + " " + resultSet.getString( 2 ) + " " );
 			}
 		}
 		catch( final SQLException e )
@@ -89,7 +90,41 @@ public class App implements Testable
 			return "1";
 		}
 	}
-
+	/**
+	 * Drops all tables
+	 */
+	@Override
+	public String dropTables()
+	{
+		String query = "select 'drop table', table_name, 'cascade constraints' from user_tables";
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( query ) )
+			{
+				while( resultSet.next() )
+				{
+					String drop_query = resultSet.getString( 1 ) + " " + resultSet.getString(2) + " " + resultSet.getString(3);
+					statement.executeQuery(drop_query);
+					System.out.println(drop_query);
+				}
+			}
+			System.out.println("dKLSDJLKFJDSKF");
+			return "0";
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
+	}
+	/**
+	 * Creates all tables
+	 */
+	@Override
+	public String createTables()
+	{
+		return "0 stub create";
+	}
 	/**
 	 * Example of one of the testable functions.
 	 */
@@ -98,7 +133,42 @@ public class App implements Testable
 	{
 		return "0 it works!";
 	}
-
+	/**
+	 * Sets date
+	 */
+	@Override
+	public String setDate( int year, int month, int day )
+	{
+		return "0 stub";
+	}
+	@Override
+	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
+		return "0 stub";
+	}
+	@Override
+	public String createCustomer( String accountId, String tin, String name, String address ){
+		return "0 stub";
+	}
+	@Override
+	public String deposit( String accountId, double amount )
+	{
+		return "0stub";
+	}
+	@Override
+	public String showBalance( String accountId )
+	{
+		return "0stub";
+	}
+	@Override
+	public String topUp( String accountId, double amount )
+	{
+		return "0 stub";
+	}
+	@Override
+	public String payFriend( String from, String to, double amount )
+	{
+		return "0stub";
+	}
 	/**
 	 * Another example.
 	 */
