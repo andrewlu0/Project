@@ -365,11 +365,21 @@ public class App implements Testable
 	{
 		checkPIN();
 		
-		
+		boolean cont = true;
+		while(cont)
+		{
+			transact();
+			System.out.println("Would you like to make another transaction?\n\"1\"\tYes\n\"0\"\tNo");
+			String repeat = input.next();
+			
+			boolean rep = repeat.equals(1);
+			if(!rep)
+			{
+			   cont = false;
+			}
+		}
 
-
-
-
+		goodbye();
 	}
 	
 	public void checkPIN()
@@ -504,12 +514,12 @@ public class App implements Testable
 					}
 			}
 			System.out.println("Account ID is Invalid");
-			return verifyAcct();
 		}
 		catch( final SQLException e )
 		{
 			System.err.println( e.getMessage() );
 		}
+		return getAcct();
 	}
 
 	private double verifyAmount()
@@ -529,12 +539,12 @@ public class App implements Testable
 	private void depositHelper()
 	{
 		String acctId = getAcct();
-
-		cont = true;
+		double depDoub = -1.0;
+		boolean cont = true;
 		while(cont)
 		{
 			System.out.println("What amount would you like to deposit?");
-			double depDoub = verifyAmount();
+			depDoub = verifyAmount();
 			if(depDoub != -1.0)
 			{
 				cont = false;
@@ -542,7 +552,7 @@ public class App implements Testable
 		}
 
 		String result = deposit( acctId, depDoub);
-		String[] report = deposit.split(" ");
+		String[] report = result.split(" ");
 
 		if(report[0].equals("1"))
 		{
