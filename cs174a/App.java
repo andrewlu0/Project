@@ -140,11 +140,11 @@ public class App implements Testable
 							+"PRIMARY KEY(tid))";
 		String create_account = "CREATE TABLE Account( aid char(20),"
 							+"bb_name CHAR(20) NOT NULL,"
-							+"balance DECIMAL NOT NULL,"
+							+"balance DECIMAL(20,2) NOT NULL,"
 							+"tid CHAR(20),"
 							+"is_closed INTEGER NOT NULL,"
-							+"interest_rate DECIMAL NOT NULL,"
-							+"flat_fee INTEGER,"
+							+"interest_rate DECIMAL(5,2) NOT NULL,"
+							+"type CHAR(20) NOT NULL,"
 							+"PRIMARY KEY (aid),"
 							+"FOREIGN KEY (tid) REFERENCES Customer(tid))";
 		String create_own = "CREATE TABLE Own(" 
@@ -158,7 +158,7 @@ public class App implements Testable
                             +"to_aid INTEGER,"
                             +"from_aid INTEGER,"
                             +"check_num INTEGER,"
-                            +"amount DECIMAL,"
+                            +"amount DECIMAL(20,2),"
                             +"type CHAR(20),"
                             +"PRIMARY KEY (trid))";
 		String create_requests = "CREATE TABLE Requests( tid CHAR(20),"
@@ -254,8 +254,8 @@ public class App implements Testable
 	}
 	@Override
 	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
-		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',"+initialTopUp+",\'"+tin+"\',0,0)";
-		String owns = "insert into own(\'"+id+"\',\'"+tin+"\')";
+		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate,type) values(\'"+id+"\','SB',"+initialTopUp+",\'"+tin+"\',0,0,'POCKET')";
+		String owns = "insert into own(aid,tid) values (\'"+id+"\',\'"+tin+"\') ";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
@@ -326,6 +326,7 @@ public class App implements Testable
 		{
 			ResultSet rs = statement.executeQuery("select * from customer where tid =\'" +tin+ "\'");
 			if (!rs.next()){
+				
 				statement.executeQuery(create_c);
 			}
 		}
@@ -334,11 +335,16 @@ public class App implements Testable
 			System.out.println("Customer already here");
 		}
 		double interest_rate;
-		if (accountType == AccountType.INTEREST_CHECKING) interest_rate = 3.0;
+		String type;
+		if (accountType == AccountType.INTEREST_CHECKING)
+		{
+			interest_rate = 3.0;
+			type = "INTEREST_CHECKING";
+		}
 		else if (accountType == AccountType.STUDENT_CHECKING) interest_rate = 0.0;
 		else interest_rate = 4.8;
-		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate) values(\'"+id+"\','SB',0,\'"+tin+"\',0,"+interest_rate+")";
-		String owns = "insert into own(\'"+id+"\',\'"+tin+"\')";
+		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate,type) values(\'"+id+"\','SB',0,\'"+tin+"\',0,"+interest_rate+",\'"+accountType+"\')";
+		String owns = "insert into own(aid,tid) values (\'"+id+"\',\'"+tin+"\')";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
@@ -352,7 +358,21 @@ public class App implements Testable
 			return "1";
 		}
 	}
-
+	
+	public String updateInterest(final AccountType accountType, double newRate)
+	{
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery( "update account set interest_rate =" + newRate + "where type=\'"+accountType+"\'");
+			System.out.println("update account set interest_rate =" + newRate + " where type=\'"+accountType+"\'");
+			return "0";
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
+	}
 	public static void goodbye()
 	{
 		System.out.println("Thank you for using our Banking Application! Goodbye!");
