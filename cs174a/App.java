@@ -287,7 +287,6 @@ public class App implements Testable
 	@Override
 	public String createCheckingSavingsAccount( final AccountType accountType, final String id, final double initialBalance, final String tin, final String name, final String address )
 	{
-		
 		double interest_rate;
 		if (accountType == AccountType.INTEREST_CHECKING) interest_rate = 3.0;
 		else if (accountType == AccountType.STUDENT_CHECKING) interest_rate = 0.0;
