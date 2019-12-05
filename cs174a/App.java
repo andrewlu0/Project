@@ -357,71 +357,231 @@ public class App implements Testable
 
 	//-----------------------------------------------------------------------------------
 
-		public void startATMInterface()
-		{
-            checkPIN();
-            
+	public void startATMInterface()
+	{
+		checkPIN();
+		
+		
 
 
 
 
-
-
-        }
-        
-        public void checkPIN()
-        {
-            boolean cont = true;
-                System.out.println("Please insert your PIN:");
-                String inputPin = input.next();
-                
-                if(verifyPIN(inputPin))
-                {
-                    cont = false;
-                }
-                else{
-                    System.out.println("The PIN you inputed was invalid. Would you like to try again?\n\"1\"\tYes\n\"0\"\tNo");
-                    String repeat = input.next();
-					
-					boolean rep = repeat.equals(1);
-                    if(rep)
-                    {
-                       checkPIN();
-					}
-					else
-					{
-						goodbye();
-					}
-                }
-        }
-
-
-		private boolean verifyPIN(String inputPin)
-		{
-			String query = "select pin, tid, from Customer";
-
-			inputPin = Integer.toString(inputPin.hashCode());
-			try( Statement statement = _connection.createStatement() )
+	}
+	
+	public void checkPIN()
+	{
+		boolean cont = true;
+			System.out.println("Please insert your PIN:");
+			String inputPin = input.next();
+			
+			if(verifyPIN(inputPin))
 			{
-				try( ResultSet resultSet = statement.executeQuery(query) )
+				cont = false;
+			}
+			else{
+				System.out.println("The PIN you inputed was invalid. Would you like to try again?\n\"1\"\tYes\n\"0\"\tNo");
+				String repeat = input.next();
+				
+				boolean rep = repeat.equals(1);
+				if(rep)
 				{
-					while( resultSet.next() )
-					{
-						if (resultSet.getString(1).equals(inputPin))
-						{
-							System.out.println("PIN VERIFIED");
-							customerTaxID = resultSet.getString(2);
-							return true;
-						}
-					}
-					
+				   checkPIN();
+				}
+				else
+				{
+					goodbye();
 				}
 			}
-			catch( final SQLException e )
+	}
+
+
+	private boolean verifyPIN(String inputPin)
+	{
+		String query = "select pin, tid, from Customer";
+
+		inputPin = Integer.toString(inputPin.hashCode());
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery(query) )
 			{
-				System.err.println( e.getMessage() );
+				while( resultSet.next() )
+				{
+					if (resultSet.getString(1).equals(inputPin))
+					{
+						System.out.println("PIN VERIFIED");
+						customerTaxID = resultSet.getString(2);
+						return true;
+					}
+				}
+				
 			}
-			return false;
 		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+		return false;
+	}
+
+	private void transact()
+	{
+		String[] actions = {"Deposit", "Top-Up", "Withdrawal", "Purchase", "Transfer", "Collect", "Wire", "Pay-Friend"};
+		System.out.println("What would you like to do?:");
+
+		for(int i = 0; i < actions.length; i++)
+		{
+			System.out.println(i + ":\t" + actions[i]);
+		}
+
+		String actIn = input.next();
+
+		if(actIn.equals(actions[0]))
+		{
+			depositHelper();
+		} else if(actIn.equals(actions[1]))
+		{
+			topUpHelper();
+		} else if(actIn.equals(actions[2]))
+		{
+			withdrawalHelper();
+		} else if(actIn.equals(actions[3]))
+		{
+			purchaseHelper();
+		} else if(actIn.equals(actions[4]))
+		{
+			transferHelper();
+		} else if(actIn.equals(actions[5]))
+		{
+			collectHelper();
+		} else if(actIn.equals(actions[6]))
+		{
+			wireHelper();
+		} else if(actIn.equals(actions[7]))
+		{
+			payfriendHelper();
+		} else {
+			System.out.println("Invalid input, please try again!");
+			transact();
+			goodbye();
+		}
+
+		System.out.println("Your transaction is complete, would you like to perform another transaction?\n\"1\"\tYes\n\"0\"\tNo");
+		String repeat = input.next();
+				
+		boolean rep = repeat.equals(1);
+
+		if(rep)
+		{
+			transact();
+		}
+		else{
+			goodbye();
+		}
+	}
+
+	private String getAcct()
+	{
+		boolean cont = true;
+
+		System.out.println("What is the Account ID of the account you would like to deposit in?");
+		String acctId = input.next();
+
+		boolean valid = false;
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid from Account" ) )
+			{
+				while( resultSet.next() )
+					if (resultSet.getString(1).equals(acctId))
+					{
+						System.out.println( "Account ID is Valid");
+						valid = true;
+						return acctId;
+					}
+			}
+			System.out.println("Account ID is Invalid");
+			return verifyAcct();
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+	}
+
+	private double verifyAmount()
+	{
+		String dep = input.next();
+
+		try{
+			double depDoub = Double.parseDouble(dep);
+			return depDoub;
+		}
+		catch(NumberFormatException e){
+			System.out.println("Invalid deposit amount!");
+			return -1.0;
+		}
+	}
+
+	private void depositHelper()
+	{
+		String acctId = getAcct();
+
+		cont = true;
+		while(cont)
+		{
+			System.out.println("What amount would you like to deposit?");
+			double depDoub = verifyAmount();
+			if(depDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+
+		String result = deposit( acctId, depDoub);
+		String[] report = deposit.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the deposit, aborting...");
+		}
+		else{
+			System.out.println("Deposit Successful! Balance of Account " + acctId + " went from $" + report[1] + " to $" + report[2] +".");
+		}
+	}
+
+	private void topUpHelper()
+	{
+		
+	}
+
+	private void withdrawalHelper()
+	{
+
+	}
+
+	private void purchaseHelper()
+	{
+
+	}
+
+	private void transferHelper()
+	{
+
+	}
+
+	private void collectHelper()
+	{
+
+	}
+
+	private void wireHelper()
+	{
+
+	}
+
+	private void payfriendHelper()
+	{
+
+	}
 
 }
