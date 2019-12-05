@@ -9,6 +9,7 @@ import java.util.*;
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.lang.*;
+import java.io.*;
 
 /**
  * The most important class for your application.
@@ -18,6 +19,7 @@ public class App implements Testable
 {
 	private OracleConnection _connection;                   // Example connection object to your DB.
 	public static Scanner input = new Scanner(System.in);
+	String customerTaxID;
 
 	/**
 	 * Default constructor.
@@ -316,9 +318,8 @@ public class App implements Testable
                 else{
                     System.out.println("The PIN you inputed was invalid. Would you like to try again?\n\"1\"\tYes\n\"0\"\tNo");
                     String repeat = input.next();
-                    
-                    boolean rep = String.valueOf(repeat);
-                    
+					
+					boolean rep = repeat.equals(1);
                     if(rep)
                     {
                        checkPIN();
@@ -333,9 +334,9 @@ public class App implements Testable
 
 		private boolean verifyPIN(String inputPin)
 		{
-			String query = "select PIN, from Customer";
+			String query = "select pin, tid, from Customer";
 
-			inputPin = inputPin.hashcode();
+			inputPin = Integer.toString(inputPin.hashCode());
 			try( Statement statement = _connection.createStatement() )
 			{
 				try( ResultSet resultSet = statement.executeQuery(query) )
@@ -345,15 +346,18 @@ public class App implements Testable
 						if (resultSet.getString(1).equals(inputPin))
 						{
 							System.out.println("PIN VERIFIED");
+							customerTaxID = resultSet.getString(2);
 							return true;
 						}
 					}
-					return false;
+					
 				}
 			}
 			catch( final SQLException e )
 			{
 				System.err.println( e.getMessage() );
 			}
+			return false;
 		}
+
 }
