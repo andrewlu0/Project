@@ -97,21 +97,33 @@ public class App implements Testable
 	@Override
 	public String dropTables()
 	{
-		// String drop_transactions = "select 'drop table', table_name, 'cascade constraints;' from user_tables";
-		// try( Statement statement = _connection.createStatement() )
-		// {
-		// 	try( ResultSet resultSet = statement.executeQuery( query ) )
-		// 	{
-		// 		statement.executeQuery(drop_transactions);
-		// 	}
-		// 	return "0";
-		// }
-		// catch( SQLException e )
-		// {
-		// 	System.err.println( e.getMessage() );
-		// 	return "1";
-		// }
-		return "0";
+		ArrayList<String> table_names = new ArrayList<String>(
+			Arrays.asList("transaction", 
+                          "account", 
+                          "own",
+						  "ch_acct",
+						  "int_ch_acct",
+						  "st_ch_acct",
+						  "sav_acct",
+						  "poc_acct",
+						  "customer",
+						  "linked_to",
+						  "requests",
+						  "modifies",
+						  "system_date")); 
+		try( Statement statement = _connection.createStatement() )
+		{
+			for (int i = 0; i < table_names.size(); i++){
+				System.out.println(table_names.get(i));
+				statement.executeQuery("drop table " + table_names.get(i) + " cascade constraints");
+			}
+			return "0";
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
 	}
 	/**
 	 * Creates all tables
@@ -120,21 +132,22 @@ public class App implements Testable
 	public String createTables()
 	{
 		String create_customer = "CREATE TABLE CUSTOMER (" 
-							+"Tid CHAR(20)"
+							+"tid CHAR(20),"
 							+"Name CHAR(20)	NOT NULL,"
 							+"Addr CHAR(50)	NOT NULL,"
 							+"Pin CHAR(4)		DEFAULT 1717,"
-							+"PRIMARY KEY(tax_id))";
+							+"PRIMARY KEY(tid))";
 		String create_account = "CREATE TABLE Account( aid INTEGER, bb_name CHAR(10) NOT NULL,"
 							+ "balance DECIMAL NOT NULL,"
 							+ "primary_owner CHAR(20),"
 							+"is_closed INTEGER NOT NULL,"
 							+"interest_rate DECIMAL NOT NULL,"
+							+"flat_fee INTEGER,"
 							+"PRIMARY KEY (aid),"
 							+"FOREIGN KEY (primary_owner) REFERENCES Customer(tid))";
 		String create_own = "CREATE TABLE Own(" 
-							+"Aid INTEGER,"
-							+"Tid CHAR(20),"
+							+"aid INTEGER,"
+							+"tid CHAR(20),"
 							+"PRIMARY KEY(Aid, tid),"
 							+"FOREIGN KEY(Aid) REFERENCES Account(aid),"
 							+"FOREIGN KEY(tid) REFERENCES Customer(tid))";				
@@ -145,13 +158,39 @@ public class App implements Testable
                             +"check_num INTEGER,"
                             +"amount DECIMAL,"
                             +"type CHAR(20),"
-                            +"PRIMARY KEY (tid))";
+                            +"PRIMARY KEY (trid))";
+		String create_requests = "CREATE TABLE Requests( tid CHAR(20),"
+                       +"trid INTEGER,"
+                       +"PRIMARY KEY (tid,trid),"
+                       +"FOREIGN KEY (tid) REFERENCES Customer(tid),"
+                       +"FOREIGN KEY (trid) REFERENCES Transaction(trid))";
+		String create_modifies = "CREATE TABLE Modifies( trid INTEGER,"
+                       +"aid INTEGER NOT NULL,"
+                       +"PRIMARY KEY (trid, aid),"
+                       +"FOREIGN KEY (trid) REFERENCES Transaction(trid),"
+                       +"FOREIGN KEY (aid) REFERENCES Account(aid))";
+		String create_linked_to = "CREATE TABLE linked_to("
+						+"Poc_aid INTEGER,"
+						+"Aid INTEGER,"
+						+"PRIMARY KEY(poc_aid, aid),"
+						+"FOREIGN KEY(poc_aid) REFERENCES account(aid),"
+						+"FOREIGN KEY(aid) REFERENCES account(aid))";
+		String create_system_date = "CREATE TABLE system_date("
+						+"year INTEGER NOT NULL,"
+						+"month INTEGER NOT NULL,"
+						+"day INTEGER NOT NULL,"
+						+"PRIMARY KEY (year,month,day))";
 		
 		try( Statement statement = _connection.createStatement() )
 		{
+			statement.executeQuery(create_customer);
 			statement.executeQuery(create_transactions);
-			statement.executeQuery(create_own);
 			statement.executeQuery(create_account);
+			statement.executeQuery(create_own);
+			statement.executeQuery(create_requests);
+			statement.executeQuery(create_modifies);
+			statement.executeQuery(create_linked_to);
+			statement.executeQuery(create_system_date);
 			return "0";
 		}
 		catch( SQLException e )
@@ -166,7 +205,23 @@ public class App implements Testable
 	@Override
 	public String listClosedAccounts()
 	{
-		return "0 it works!";
+		String result = "0";
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid, is_closed from account where is_closed=1" ) )
+			{
+				while( resultSet.next() )
+				{
+					result = result + " " + String.valueOf(resultSet.getInt(1));
+				}		
+			}
+			return result;
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
 	}
 	/**
 	 * Sets date
@@ -174,7 +229,22 @@ public class App implements Testable
 	@Override
 	public String setDate( int year, int month, int day )
 	{
-		return "0 stub";
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid, is_closed from account where is_closed=1" ) )
+			{
+				while( resultSet.next() )
+				{
+					result = result + " " + String.valueOf(resultSet.getInt(1));
+				}		
+			}
+			return result;
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
 	}
 	@Override
 	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
