@@ -289,8 +289,6 @@ public class App implements Testable
 	@Override
 	public String deposit( String accountId, double amount )
 	{
-		
-
 		double currBalance = 0.0;
 		try( Statement statement = _connection.createStatement() )
 		{
@@ -344,7 +342,6 @@ public class App implements Testable
 		{
 			ResultSet rs = statement.executeQuery("select * from customer where tid =\'" +tin+ "\'");
 			if (!rs.next()){
-				
 				statement.executeQuery(create_c);
 			}
 		}
