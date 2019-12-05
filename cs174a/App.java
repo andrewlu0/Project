@@ -221,5 +221,69 @@ public class App implements Testable
 
 	//-----------------------------------------------------------------------------------
 
-	
+		public void startATMInterface()
+		{
+            checkPIN();
+            
+
+
+
+
+
+
+        }
+        
+        public void checkPIN()
+        {
+            boolean cont = true;
+                System.out.println("Please insert your PIN:");
+                String inputPin = input.next();
+                
+                if(verifyPIN(inputPin))
+                {
+                    cont = false;
+                }
+                else{
+                    System.out.println("The PIN you inputed was invalid. Would you like to try again?\n\"1\"\tYes\n\"0\"\tNo");
+                    String repeat = input.next();
+                    
+                    boolean rep = String.valueOf(repeat);
+                    
+                    if(rep)
+                    {
+                       checkPIN();
+					}
+					else
+					{
+						goodbye();
+					}
+                }
+        }
+
+
+		private boolean verifyPIN(String inputPin)
+		{
+			String query = "select PIN, from Customer";
+
+			inputPin = inputPin.hashcode();
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet resultSet = statement.executeQuery(query) )
+				{
+					while( resultSet.next() )
+					{
+						if (resultSet.getString(1).equals(inputPin))
+						{
+							System.out.println("PIN VERIFIED");
+							return true;
+						}
+					}
+					return false;
+				}
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+			}
+		}
 }
