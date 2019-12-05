@@ -95,19 +95,13 @@ public class App implements Testable
 	@Override
 	public String dropTables()
 	{
-		String query = "select 'drop table', table_name, 'cascade constraints' from user_tables";
+		String drop_transactions = "select 'drop table', table_name, 'cascade constraints;' from user_tables";
 		try( Statement statement = _connection.createStatement() )
 		{
 			try( ResultSet resultSet = statement.executeQuery( query ) )
 			{
-				while( resultSet.next() )
-				{
-					String drop_query = resultSet.getString( 1 ) + " " + resultSet.getString(2) + " " + resultSet.getString(3);
-					statement.executeQuery(drop_query);
-					System.out.println(drop_query);
-				}
+				statement.executeQuery(drop_transactions);
 			}
-			System.out.println("dKLSDJLKFJDSKF");
 			return "0";
 		}
 		catch( SQLException e )
@@ -122,7 +116,43 @@ public class App implements Testable
 	@Override
 	public String createTables()
 	{
-		return "0 stub create";
+		String create_account = "CREATE TABLE Account( 
+							aid INTEGER,
+							bb_name CHAR(10) NOT NULL,
+							balance DECIMAL NOT NULL,
+							primary_owner CHAR(20),
+							is_closed INTEGER NOT NULL,
+							interest_rate DECIMAL NOT NULL,
+							PRIMARY KEY (aid),
+							FOREIGN KEY (primary_owner) REFERENCES Customer(tid))";
+		String create_own = "CREATE TABLE Own( 
+							Aid INTEGER,
+							Tid CHAR(20),
+							PRIMARY KEY(Aid, tid),
+							FOREIGN KEY(Aid) REFERENCES Account(aid),
+							FOREIGN KEY(tid) REFERENCES Customer(tid))";				
+		String create_transactions = "CREATE TABLE Transaction( trid INTEGER,
+                            t_date DATE NOT NULL,
+                            to_aid INTEGER,
+                            from_aid INTEGER,
+                            check_num INTEGER,
+                            amount DECIMAL,
+                            type CHAR(20),
+                            PRIMARY KEY (tid))";
+		
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( query ) )
+			{
+				statement.executeQuery(create_transactions);
+			}
+			return "0";
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
 	}
 	/**
 	 * Example of one of the testable functions.
