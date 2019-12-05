@@ -132,6 +132,11 @@ public class App implements Testable
 	@Override
 	public String createTables()
 	{
+		String create_tran_id = "CREATE SEQUENCE seq_tran"
+							+"MINVALUE 1"
+							+"START WITH 1"
+							+"INCREMENT BY 1"
+							+"CACHE 10";
 		String create_customer = "CREATE TABLE CUSTOMER (" 
 							+"tid CHAR(20),"
 							+"Name CHAR(20)	NOT NULL,"
@@ -179,9 +184,11 @@ public class App implements Testable
 						+"FOREIGN KEY(aid) REFERENCES account(aid))";
 		String create_system_date = "CREATE TABLE system_date("
 						+"system_date DATE)";
+
 		
 		try( Statement statement = _connection.createStatement() )
 		{
+			statement.executeQuery(create_tran_id);
 			statement.executeQuery(create_customer);
 			statement.executeQuery(create_transactions);
 			statement.executeQuery(create_account);
@@ -294,7 +301,8 @@ public class App implements Testable
 		{
 			try( ResultSet resultSet = statement.executeQuery( "select balance from account where aid = \'" + accountId + "\'" ) )
 			{
-				currBalance = resultSet.getDouble(1);
+				if (resultSet.next())
+					currBalance = resultSet.getDouble(1);
 			}
 
 			double newBalance = currBalance + amount;
