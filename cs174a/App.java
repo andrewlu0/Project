@@ -287,7 +287,25 @@ public class App implements Testable
 	@Override
 	public String deposit( String accountId, double amount )
 	{
-		return "0stub";
+		
+
+		double currBalance = 0.0;
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select balance from account where aid = \'" + accountId + "\'" ) )
+			{
+				currBalance = resultSet.getDouble(1);
+			}
+
+			double newBalance = currBalance + amount;
+			statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+			return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", currBalance);
+		}
 	}
 	@Override
 	public String withdraw( String accountId, double amount )
