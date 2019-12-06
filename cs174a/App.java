@@ -932,22 +932,22 @@ public class App implements Testable
 			try( ResultSet resultSet = statement.executeQuery( "select t_date from transactions where aid = " + acctId ) )
 			{
 				while( resultSet.next() )
-					if (resultSet.getString(1).getDate().substring(0,7).equals(year + "/"+ month))
+					if (resultSet.getString(1).substring(0,7).equals(year + "/"+ month))
 					{
 						System.out.println("Flat Fee charged already this month");
 						return false;
 					}
 
-					System.out.println("First transaction for this pocket account this month, $5 flat fee will be charged");
-					return true;
 			}
 		}
 		catch( final SQLException e )
 		{
 			System.err.println( e.getMessage() );
+			return false;
 		}
 		
-		
+		System.out.println("First transaction for this pocket account this month, $5 flat fee will be charged");
+		return true;
 	}
 	//-------------------------------BANK TELLER INTERFACE-----------------------------------------
 	public void startBankTellerInterface()
