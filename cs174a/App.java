@@ -20,6 +20,7 @@ public class App implements Testable
 	private OracleConnection _connection;                   // Example connection object to your DB.
 	public static Scanner input = new Scanner(System.in);
 	String customerTaxID;
+	boolean isBankTeller = false;
 
 	/**
 	 * Default constructor.
@@ -118,6 +119,8 @@ public class App implements Testable
 				System.out.println(table_names.get(i));
 				statement.executeQuery("drop table " + table_names.get(i) + " cascade constraints");
 			}
+			statement.executeQuery("drop sequence seq_tran");
+			statement.executeQuery("drop sequence seq_check");
 			return "0";
 		}
 		catch( SQLException e )
@@ -132,15 +135,15 @@ public class App implements Testable
 	@Override
 	public String createTables()
 	{
-		String create_tran_id = "CREATE SEQUENCE seq_tran"
-							+"MINVALUE 1"
-							+"START WITH 1"
-							+"INCREMENT BY 1"
+		String create_tran_id = "CREATE SEQUENCE seq_tran "
+							+"MINVALUE 1 "
+							+"START WITH 1 "
+							+"INCREMENT BY 1 "
 							+"CACHE 10";
-		String create_check_id = "CREATE SEQUENCE seq_check"
-							+"MINVALUE 1"
-							+"START WITH 1"
-							+"INCREMENT BY 1"
+		String create_check_id = "CREATE SEQUENCE seq_check "
+							+"MINVALUE 1 "
+							+"START WITH 1 "
+							+"INCREMENT BY 1 "
 							+"CACHE 10";
 		String create_customer = "CREATE TABLE CUSTOMER (" 
 							+"tid CHAR(20),"
@@ -167,6 +170,7 @@ public class App implements Testable
                             +"t_date DATE NOT NULL,"
                             +"to_aid CHAR(20),"
                             +"from_aid CHAR(20),"
+							+"CONSTRAINT chkIsNotNull CHECK (to_aid is not null or from_aid is not null),"
                             +"check_num INTEGER,"
                             +"amount DECIMAL(20,2),"
                             +"type CHAR(20),"
@@ -494,7 +498,7 @@ public class App implements Testable
 		System.exit(0);
 	}
 
-	//-----------------------------------------------------------------------------------
+	//-----------------------------------ATM/App Interface------------------------------------------------
 
 	public void startATMInterface()
 	{
@@ -614,7 +618,7 @@ public class App implements Testable
 			goodbye();
 		}
 
-		System.out.println("Your transaction is complete, would you like to perform another transaction?\n\"1\"\tYes\n\"0\"\tNo");
+		System.out.println("Your transaction is complete! Would you like to perform another transaction?\n\"1\"\tYes\n\"0\"\tNo");
 		String repeat = input.next();
 				
 		boolean rep = repeat.equals(1);
@@ -640,10 +644,12 @@ public class App implements Testable
 		{
 			try( ResultSet resultSet = statement.executeQuery( "select aid, tid, is_closed from Account" ) )
 			{
-				while( resultSet.next() )
-					if (resultSet.getString(1).equals(acctId))
+				while( resultSet.next() ){
+					if (resultSet.getString(1).trim().equals(acctId))
 					{
 						System.out.println( "Account ID is Valid");
+						if (isBankTeller)
+							return acctId;
 						if(resultSet.getString(2).equals(customerTaxID))
 						{
 							System.out.println("Account Verified to belong to you");
@@ -665,6 +671,7 @@ public class App implements Testable
 						}
 						
 					}
+				}
 			}
 			System.out.println("Account ID is Invalid, please choose another account");
 		}
@@ -679,7 +686,7 @@ public class App implements Testable
 	{
 		String amt = input.next();
 		try{
-			double amtDoub = Math.floor(Double.parseDouble(amt)) / 100.0;
+			double amtDoub = Math.floor(Double.parseDouble(amt)*100) / 100.0;
 			if(amtDoub < 0.0)
 			{
 				System.out.println("Invalid amount!");
@@ -796,11 +803,53 @@ public class App implements Testable
 	{
 
 	}
+
+	private void closeAccount(String acctId)
+	{
+		try(Statement statement = _connection.createStatement())
+		{
+			statement.executeQuery( "update account set is_closed = 1 where aid = \'" + acctId+ "\'");
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+	}
+
+	private boolean checkValidType(String acctID, String[] validType)
+	{
+		String acctType = "invalid";
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid, type from Account where aid = " + acctID ) )
+			{
+				if(resultSet.next())
+					acctType = resultSet.getString(2);
+			}
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return false;
+		}
+
+		for(String i : validType)
+		{
+			if(i.equals(acctType))
+			{
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
 	
 	//-------------------------------BANK TELLER INTERFACE-----------------------------------------
 	public void startBankTellerInterface()
 	{
 		boolean cont = true;
+		isBankTeller = true;
 		while(cont)
 		{
 			String[] actions = {"Enter Check Transaction", 
@@ -854,66 +903,24 @@ public class App implements Testable
 				default:
 					System.out.println("Invalid input, please try again!");
 					startBankTellerInterface();
-		}
-		System.out.println("Would you like to perform another action?\n1:\tYes\nAny Other Key:\tNo");
-      	if(!input.next().equals("1"))
-		{
-			cont = false;
-		}
+			}
+			System.out.println("Would you like to perform another action?\n1:\tYes\nAny Other Key:\tNo");
+			if(!input.next().equals("1"))
+				cont = false;
 		}
 		goodbye();
-	}
+	}	
 
-
-	private boolean checkValidType(String acctID, String[] validType)
-	{
-		String acctType = "invalid";
-		try( Statement statement = _connection.createStatement() )
-		{
-			try( ResultSet resultSet = statement.executeQuery( "select aid, type from Account where aid = " + acctID ) )
-			{
-				if(resultSet.next())
-					acctType = resultSet.getString(2);
-			}
-		}
-		catch( SQLException e )
-		{
-			System.err.println( e.getMessage() );
-			return false;
-		}
-
-		for(String i : validType)
-		{
-			if(i.equals(acctType))
-			{
-				return true;
-			}
-			else{
-				return false;
 			
-		}
-	}
-	
 	private void enterCheckTransaction(){
 		String acctId = getAcct();
 		System.out.println("How much is the check?");
 		double amt = verifyAmount();
 		withdraw(acctId,amt);
-		//createTransaction("",acctId,);
-		//createModifies();
+		createTransaction("",acctId,true,amt,"WRITE-CHECK");
   	}
 		
 
-private void closeAccount(String acctId)
-	{
-		try(Statement statement = _connection.createStatement())
-		{
-			statement.executeQuery( "update account set is_closed = 1 where aid = \'" + acctId+ "\'");
-		}
-		catch( final SQLException e )
-		{
-			System.err.println( e.getMessage() );
-		}
-	}
+	
 
 }

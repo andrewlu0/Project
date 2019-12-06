@@ -24,22 +24,22 @@ public class Main
 													// constructor exists.
 		String r = app.initializeSystem();         // We'll always call this function before testing your system.
 		//System.out.println(app.dropTables());
-		//System.out.println(app.createTables());
+		System.out.println(app.createTables());
 		
 		
 		//System.out.println(app.setDate(2019,12,4));
 		if( r.equals( "0" ) )
 		{
 			//app.exampleAccessToDB();                // Example on how to connect to the DB.
-			//app.startBankTellerInterface();
+			app.startBankTellerInterface();
 			// Example tests.  We'll overwrite your Main.main() function with our final tests.
 			r = app.listClosedAccounts();
 			System.out.println( r );
 
 			// Another example test.
-			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "account3", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
+			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "334", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
 			//r = app.updateInterest(AccountType.SAVINGS,9.1);
-			app.createTransaction("","388",true,1.3,"DEPOSIT");
+			app.createTransaction("","233",true,1.3,"DEPOSIT");
 			//app.createPocketAccount("pocket4","checking",29.9,"bbb");
 			System.out.println( r );
 		}
