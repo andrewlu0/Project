@@ -110,7 +110,6 @@ public class App implements Testable
 						  "customer",
 						  "linked_to",
 						  "requests",
-						  "modifies",
 						  "system_date"
 						)); 
 		try( Statement statement = _connection.createStatement() )
@@ -164,7 +163,7 @@ public class App implements Testable
 							+"aid CHAR(20),"
 							+"tid CHAR(20),"
 							+"PRIMARY KEY(Aid, tid),"
-							+"FOREIGN KEY(Aid) REFERENCES Account(aid),"
+							+"FOREIGN KEY(Aid) REFERENCES Account(aid) ON DELETE CASCADE,"
 							+"FOREIGN KEY(tid) REFERENCES Customer(tid))";				
 		String create_transactions = "CREATE TABLE Transaction( trid INTEGER,"
                             +"t_date DATE NOT NULL,"
@@ -180,17 +179,12 @@ public class App implements Testable
                        +"PRIMARY KEY (tid,trid),"
                        +"FOREIGN KEY (tid) REFERENCES Customer(tid),"
                        +"FOREIGN KEY (trid) REFERENCES Transaction(trid))";
-		String create_modifies = "CREATE TABLE Modifies( trid INTEGER,"
-                       +"aid char(20) NOT NULL,"
-                       +"PRIMARY KEY (trid, aid),"
-                       +"FOREIGN KEY (trid) REFERENCES Transaction(trid),"
-                       +"FOREIGN KEY (aid) REFERENCES Account(aid))";
 		String create_linked_to = "CREATE TABLE linked_to("
 						+"Poc_aid CHAR(20),"
 						+"Aid CHAR(20),"
 						+"PRIMARY KEY(poc_aid, aid),"
 						+"FOREIGN KEY(poc_aid) REFERENCES account(aid),"
-						+"FOREIGN KEY(aid) REFERENCES account(aid))";
+						+"FOREIGN KEY(aid) REFERENCES account(aid) ON DELETE CASCADE)";
 		String create_system_date = "CREATE TABLE system_date("
 						+"system_date DATE)";
 
@@ -203,7 +197,6 @@ public class App implements Testable
 			statement.executeQuery(create_account);
 			statement.executeQuery(create_own);
 			statement.executeQuery(create_requests);
-			statement.executeQuery(create_modifies);
 			statement.executeQuery(create_linked_to);
 			statement.executeQuery(create_system_date);
 			statement.executeQuery(create_check_id);
@@ -272,12 +265,11 @@ public class App implements Testable
 	@Override
 	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
 		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate,type) values(\'"+id+"\','SB',"+initialTopUp+",\'"+tin+"\',0,0,'POCKET')";
-		String linked = "insert into linked_to values (\'"+id+"\',\'"+linkedId+"\')'";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
-			statement.executeQuery(linked);
 			createOwn(id,tin);
+			createLinkedTo(id,linkedId);
 			withdraw(linkedId,initialTopUp);
 			return "0 " + id + " AccountType.POCKET " + initialTopUp + " " + tin;
 		}
@@ -292,6 +284,17 @@ public class App implements Testable
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(owns);
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage());
+		}
+	}
+	private void createLinkedTo(String id, String linkedId){
+		String links = "insert into linked_to values (\'"+id+"\',\'"+linkedId+"\')";
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery(links);
 		}
 		catch( SQLException e )
 		{
@@ -318,17 +321,17 @@ public class App implements Testable
 	 * @param to_acct Source of transaction, "" if NULL
 	 * @param from_acct Destination of transaction, "" if NULL
 	 * @param check Check number, -1 if NULL
-	 * @param ammount Ammount of transaction.
+	 * @param amount Amount of transaction.
 	 * @param type Type of transaction.
 	 */
-	public void createTransaction(String to_acct,String from_acct,boolean check,double ammount,String type){
+	public void createTransaction(String to_acct,String from_acct,boolean check,double amount,String type){
 		String query = "insert into transaction values(seq_tran.nextval,";
 		String date = getDate();
 		query += "TO_DATE(\'" + date.substring(0,10) + "\',\'YYYY-MM-DD\'),";
 		query += (to_acct.length() > 0) ? "\'" + to_acct + "\',": "NULL,";
 		query += (from_acct.length() >0) ? "\'" + from_acct + "\'," : "NULL,";
 		query += (check) ? "seq_check.nextval," : "NULL,";
-		query += ammount + ",\'"+type+"\')";
+		query += amount + ",\'"+type+"\')";
 		System.out.println(query);
 		try( Statement statement = _connection.createStatement() )
 		{
@@ -959,7 +962,7 @@ public class App implements Testable
 								"List Closed Accounts", 
 								"Generate Government Drug and Tax Evasion Report (DTER)", 
 								"Customer Report", 
-								"Add Interest:", 
+								"Add Interest", 
 								"Create Account", 
 								"Delete Closed Accounts and Customers",
 								"Delete Transactions",
@@ -1018,6 +1021,23 @@ public class App implements Testable
 			
 	private void enterCheckTransaction(){
 		String acctId = getAcct();
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select type from account where aid=\'"+acctId+"\'"))
+			{
+				if( resultSet.next() )
+				{
+					if(!resultSet.getString(1).trim().equals("STUDENT_CHECKING") && !resultSet.getString(1).trim().equals("INTEREST_CHECKING")){
+						System.err.println("Account must be a checking account.");
+						return;
+					}	
+				}
+			}		
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
 		System.out.println("How much is the check?");
 		double amt = verifyAmount();
 		withdraw(acctId,amt);
@@ -1043,8 +1063,13 @@ public class App implements Testable
 		{
 			try( ResultSet resultSet = statement.executeQuery( "select aid,tid from own where tid=\'"+tid+"\'"))
 			{
+				if (!resultSet.isBeforeFirst()){
+					System.out.println("Customer does not exist");
+					return;
+				}
 				while( resultSet.next() )
 				{
+					System.out.println(resultSet.getString(1));
 					accounts.add(resultSet.getString(1));
 				}
 			}		
@@ -1079,14 +1104,18 @@ public class App implements Testable
 			total_sum += currentBalance;
 			try( Statement statement = _connection.createStatement() )
 			{
+				System.out.println("select * from transaction "
+																		+"where (to_aid=\'"+aid+"\' "
+																		+"or from_aid =\'"+aid+"\') ");
 				try( ResultSet resultSet = statement.executeQuery("select * from transaction "
 																		+"where (to_aid=\'"+aid+"\' "
 																		+"or from_aid =\'"+aid+"\') "))
 				{
-					if (!resultSet.next())
+					if (!resultSet.isBeforeFirst())
 						System.out.println("No transactions this month.");
 					while( resultSet.next() )
 					{
+						System.out.println(resultSet.getString(1));
 						if (resultSet.getString(2).substring(0,4).equals(year) && resultSet.getString(2).substring(5,7).equals(month)){
 							// System.out.println(resultSet.getString(2).substring(0,4)+" "+resultSet.getString(2).substring(5,7));
 							net = String.format("%.2f", resultSet.getDouble(6));
@@ -1094,7 +1123,7 @@ public class App implements Testable
 								net = "-" + net;
 							}
 							initialBalance -= Double.valueOf(net);
-							System.out.println("Date: " + resultSet.getString(2).substring(0,10)+"\tType: " + resultSet.getString(7)+ "\tAmount: "+net);
+							System.out.println("Date: " + resultSet.getString(2).substring(0,10)+"\tType: " + resultSet.getString(7)+ "\tAmount: $"+net);
 						}
 					}
 				}
@@ -1103,7 +1132,7 @@ public class App implements Testable
 			{
 				System.err.println( e.getMessage() );
 			}
-			System.out.println("Initial Balance: "+initialBalance+"\tCurrent Balance: "+currentBalance);
+			System.out.println("Initial Balance: $"+initialBalance+"\tCurrent Balance: $"+currentBalance);
 			System.out.println("Owners:");
 			try( Statement statement = _connection.createStatement() )
 			{
@@ -1125,11 +1154,64 @@ public class App implements Testable
 			System.out.println("Warning: Insurance limit reached.\n");
 		}
 	}
-	//TODO 
 	private void generateDTER(){
 		if (!isLastDay()){
 			System.out.println("Can only generate DTER on last day of month.\n");
 			return;
+		}
+		System.out.println("DTER Report:");
+		ArrayList<String> customers = new ArrayList<String>();
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select tid from customer"))
+			{
+				while( resultSet.next() )
+				{
+					customers.add(resultSet.getString(1));
+				}
+			}		
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+		for (int i = 0; i < customers.size(); i++){
+			ArrayList<String> accounts = new ArrayList<String>();
+			double sum = 0.0;
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet resultSet = statement.executeQuery( "select aid from own where tid =\'" + customers.get(i) + "\'"))
+				{
+					while( resultSet.next() )
+					{
+						accounts.add(resultSet.getString(1));
+					}
+				}		
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+			}
+			for (int j = 0; j < accounts.size();j++){
+				try( Statement statement = _connection.createStatement() )
+				{
+					try( ResultSet resultSet = statement.executeQuery( "select amount from transaction where to_aid =\'" + accounts.get(j) + "\'"
+																		+" and (type='DEPOSIT' or type='WIRE' or type='TRANSFER')"))
+					{
+						while( resultSet.next() )
+						{
+							sum += resultSet.getDouble(1);
+						}
+					}		
+				}
+				catch( final SQLException e )
+				{
+					System.err.println( e.getMessage() );
+				}
+			}
+			if (sum >= 10000){
+				System.out.println("Customer: " + customers.get(i) + "\tDeposits: $" + String.format("%.2f", sum));
+			}
 		}
 	}
 	private void customerReport(){
@@ -1178,6 +1260,8 @@ public class App implements Testable
 			System.out.println("Can only add interest on last day of month.\n");
 			return;
 		}
+		int day = Integer.valueOf(getDate().substring(8,10));
+		System.out.println(day);
 	}
 	private void createAccount(){
 		System.out.println("Enter account type:\n"
@@ -1207,8 +1291,7 @@ public class App implements Testable
 				atype = AccountType.INTEREST_CHECKING;
 			else 
 				atype = AccountType.SAVINGS;
-			System.out.println("asdf");
-			if((createCheckingSavingsAccount(atype,id, amt, tin, name, address)).equals("0"))
+			if((createCheckingSavingsAccount(atype,id, amt, tin, name, address)).substring(0,1).equals("0"))
 				System.out.println("Account created");
 			else
 				System.out.println("There was a problem creating the account.");
@@ -1218,7 +1301,11 @@ public class App implements Testable
 			atype = AccountType.POCKET;
 			System.out.println("Enter linked checking/savings account ID:");
 			lid = input.next();
-			createPocketAccount(id, lid, amt, tin);
+			if(createPocketAccount(id, lid, amt, tin).substring(0,1).equals("0"))
+				System.out.println("Account created");
+			else
+				System.out.println("There was a problem creating the account.");
+			
 		}
 		else if (acctype.equals("5")){
 			startBankTellerInterface();
@@ -1228,13 +1315,36 @@ public class App implements Testable
 			createAccount();
 		}
 	}
-	//TODO
 	private void deleteClosed(){
+		if (!isLastDay()){
+			System.out.println("Can only delete closed on last day of month.\n");
+			return;
+		}
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery("delete from account where is_closed=1");
+			statement.executeQuery("delete from customer where tid not in (select tid from account)");
+			System.out.println("Closed accounts and customers deleted.");
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
 
 	}
-	//TODO
 	private void deleteTransactions(){
-
+		if (!isLastDay()){
+			System.out.println("Can only delete transactions on last day of month.\n");
+			return;
+		}
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery("delete from transaction");
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
 	}
 	private boolean isLastDay(){
 		try( Statement statement = _connection.createStatement() )
