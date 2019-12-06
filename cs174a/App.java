@@ -795,7 +795,7 @@ public class App implements Testable
 
 	private void purchaseHelper()
 	{
-
+		
 	}
 
 	private void transferHelper()
