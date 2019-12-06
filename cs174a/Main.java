@@ -35,8 +35,8 @@ public class Main
 		{
 			//app.exampleAccessToDB();                // Example on how to connect to the DB.
 			//app.startATMInterface();
-			//app.startBankTellerInterface();
-			app.setDate(2020,9,1);
+			app.startBankTellerInterface();
+			//app.setDate(2020,11,30);
 			// Example tests.  We'll overwrite your Main.main() function with our final tests.
 			r = app.listClosedAccounts();
 			System.out.println( r );

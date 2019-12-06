@@ -272,15 +272,17 @@ public class App implements Testable
 			if (currdate.next()){
 				currmonth = currdate.getString(1).substring(5,7);
 				curryear = currdate.getString(1).substring(0,4);
+				if (Integer.valueOf(currmonth) < 10)
+					currmonth = currmonth.substring(1,2);
 			}
 			if (year > Integer.valueOf(curryear) || (year == Integer.valueOf(curryear) && month > Integer.valueOf(currmonth))){
-				System.out.println("going forward");
-				System.out.println("select add_interest, delete_closed, delete_trans from monthly_tasks where month=\'"+currmonth.substring(1,2)+
-														"\' and year=\'" + curryear +"\'");
-				ResultSet check = statement.executeQuery("select add_interest, delete_closed, delete_trans from monthly_tasks where month=\'"+currmonth.substring(1,2 )+
+				// System.out.println("going forward");
+				// System.out.println("select add_interest, delete_closed, delete_trans from monthly_tasks where month=\'"+currmonth+
+				// 										"\' and year=\'" + curryear +"\'");
+				ResultSet check = statement.executeQuery("select add_interest, delete_closed, delete_trans from monthly_tasks where month=\'"+currmonth+
 														"\' and year=\'" + curryear +"\'");
 				if (check.next()){
-					System.out.println(check.getInt(1) + " " + check.getInt(2) + " " + check.getInt(3));
+					// System.out.println(check.getInt(1) + " " + check.getInt(2) + " " + check.getInt(3));
 					if ((check.getInt(1)+check.getInt(2)+check.getInt(3))!=3){
 						System.out.println("Cannot change date. Monthly tasks not complete. Setting date to final date of month");
 						ResultSet lastday = statement.executeQuery("select last_day(system_date) from system_date");
@@ -398,7 +400,8 @@ public class App implements Testable
 	}
 	@Override
 	public String createCustomer( String accountId, String tin, String name, String address ){
-		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address+"\',1717)";
+		String address_parse = address.replace("'","\'");
+		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',1717)";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(create_c);
@@ -755,7 +758,6 @@ public class App implements Testable
 		
 	}
 
-
 	@Override
 	public String payFriend( String from, String to, double amount )
 	{
@@ -864,7 +866,8 @@ public class App implements Testable
 			System.err.println("Initial deposit must be >= 1000");
 			return "1";
 		}
-		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address+"\',1717)";
+		String address_parse = address.replace("'","\'");
+		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',1717)";
 		try( Statement statement = _connection.createStatement() )
 		{
 			ResultSet rs = statement.executeQuery("select * from customer where tid =\'" +tin+ "\'");
@@ -1035,7 +1038,7 @@ public class App implements Testable
 			collectHelper();
 		} else if(actIn.equals("6"))
 		{
-			wireHelper();
+			//wireInterface();
 		} else if(actIn.equals("7"))
 		{
 			payFriendInterface();
@@ -1146,8 +1149,6 @@ public class App implements Testable
 
 	  public String giveToNotYours( String accountId, double amount )
 	{
-
-
 			double currBalance = 0.0;
 			String result = showBalance(accountId);
 
@@ -1347,13 +1348,6 @@ public class App implements Testable
 		}
 	}
 	
-
-
-
-	
-
-
-
 	private void transferHelper()
 	{
 
@@ -1363,13 +1357,6 @@ public class App implements Testable
 	{
 
 	}
-
-	private void wireHelper()
-	{
-
-	}
-
-	
 
 	private void closeAccount(String acctId)
 	{
@@ -1742,8 +1729,26 @@ public class App implements Testable
 		}
 		int day = Integer.valueOf(getDate().substring(8,10));
 		ArrayList<String> accounts = new ArrayList<String>();
+		String month = "";
+		String year = "";
 		try( Statement statement = _connection.createStatement() )
-		{
+		{	
+			try ( ResultSet check = statement.executeQuery("select system_date from system_date"))
+			{
+				if (check.next()){
+					month = check.getString(1).substring(5,7);
+					year = check.getString(1).substring(0,4);
+					if (Integer.valueOf(month) < 10)
+						month = month.substring(1,2);
+				}
+				ResultSet interest = statement.executeQuery("select add_interest from monthly_tasks where month=\'" + month + "\' and year=\'" + year + "\'");
+				if (interest.next()){
+					if (interest.getInt(1)==1) {
+						System.out.println("Interest has already been added for this month.");
+						return;
+					}
+				}
+			}
 			try( ResultSet resultSet = statement.executeQuery( "select aid from account where is_closed=0 and interest_rate !=0"))
 			{
 				while( resultSet.next() )
