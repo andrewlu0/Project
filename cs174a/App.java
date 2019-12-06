@@ -1573,7 +1573,7 @@ public class App implements Testable
 				}	
 				double adb = potential / day;
 				double new_bal = currbal + (adb*(interest_rate/100));	
-				statement.executeQuery("update account set balance=" + new_bal + "where aid=\'" + aid + "\'"))
+				statement.executeQuery("update account set balance=" + new_bal + "where aid=\'" + aid + "\'"));
 			}
 			catch( final SQLException e )
 			{
