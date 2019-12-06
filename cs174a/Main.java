@@ -24,7 +24,7 @@ public class Main
 													// constructor exists.
 		String r = app.initializeSystem();         // We'll always call this function before testing your system.
 		//System.out.println(app.dropTables());
-		System.out.println(app.createTables());
+		//System.out.println(app.createTables());
 		
 		
 		//System.out.println(app.setDate(2019,12,4));
