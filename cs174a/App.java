@@ -632,31 +632,102 @@ public class App implements Testable
 		}
 	}
 
-
-	@Override
-	public String showBalance( String accountId )
+	public String transfer( String from, String to, double amount )
 	{
-				
-		try(Statement statement = _connection.createStatement())
+		if(verifyAcct(from) && verifyAcct(to) && verifyAmt(amount))
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select aid, balance from account" ) )
+			if(amount > 2000.0)
 			{
-				while( resultSet.next() ){
-					if(resultSet.getString(1).trim().equals(accountId.trim()))
-					{
-						return "0 " + resultSet.getString(2);
-					}
-				}
+				System.out.println("You cannot transfer more than $2000.00");
+				return "1";
 			}
-			return "1";
-			
+			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
+			if(!checkValidType(from, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
+			if(!checkValidType(to, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
+
+
+			try( Statement statement = _connection.createStatement() )
+			{
+
+				String result;
+
+				result = takeFrom(from, amount);
+				
+
+				String[] report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				String newFromBalance = report[2];
+
+				result = giveTo(to, amount);
+
+				report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				else
+					return "0 " + newFromBalance + " " + report[2];
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
 		}
-		catch( final SQLException e )
-		{
-			System.err.println( e.getMessage() );
+		else
 			return "1";
+	}
+
+	private void transferInterface()
+	{
+		System.out.println("Choose account to take from: ");
+		String from = acctInterface();
+		System.out.println("Choose account to give to: ");
+		String to = acctInterface();
+			
+			
+	
+		double transDoub = -1.0;
+		boolean cont = true;
+		while(cont)
+		{
+			transDoub = amtInterface();
+			if(transDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+		
+		
+		String result = transfer( from, to, transDoub);
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the transfer, aborting...");
+		}
+		else{
+			System.out.println("Transfer Successful! Balance of From Account is $" + report[1] + " and balance of To Account is $" + report[2] +".");
 		}
 	}
+
+
+	
 	@Override
 	public String topUp( String accountId, double amount )
 	{
@@ -758,6 +829,110 @@ public class App implements Testable
 		
 	}
 
+	public String collect( String accountId, double amount )
+	{
+		if(verifyAcct(accountId) && verifyAmt(amount))
+		{
+			String[] types = {"POCKET"};
+			if(!checkValidType(accountId, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
+			String linkedAid;
+
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet resultSet = statement.executeQuery( "select aid from linked_to where poc_aid = " + accountId ) )
+				{
+					if(resultSet.next())
+						linkedAid = resultSet.getString(1);
+					else
+					{
+						System.out.println("Cannot find Pocket Account's linked account");
+						return "1";
+					}
+				}
+				String result;
+
+				//3% fee
+				double amountWithFee = amount * 1.03;
+
+				if(chargePocketFlatFee(accountId))
+				{
+					result = takeFrom(accountId, amountWithFee+5.0);
+				}
+				else
+					result = takeFrom(accountId, amountWithFee);
+				
+
+				String[] report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				String newPocketBalance = report[2];
+
+				result = giveTo(linkedAid, amount);
+
+				report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				else
+					return "0 " + report[2] + " " + newPocketBalance;
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
+		}
+		else
+			return "1";
+
+	}
+
+	private void collectInterface()
+	{
+		boolean cont = true;
+		String acctId = "invalid";
+
+			acctId = acctInterface();
+			
+			
+	
+		double pockDoub = -1.0;
+		cont = true;
+		while(cont)
+		{
+			pockDoub = amtInterface();
+			if(pockDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+		
+		
+		String result = collect( acctId, pockDoub);
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the collect, aborting...");
+		}
+		else{
+			System.out.println("Collect Successful! Balance of Pocket Account is $" + report[2] + " and balance of linked account is $" + report[1] +".");
+		}
+		
+	}
+
+
 	@Override
 	public String payFriend( String from, String to, double amount )
 	{
@@ -856,6 +1031,97 @@ public class App implements Testable
 			System.out.println("Pay Friend Successful! Balance of From Account is $" + report[1] + " and balance of To Account is $" + report[2] +".");
 		}
 	}
+
+
+	public String wire( String from, String to, double amount )
+	{
+		if(verifyAcct(from) && acctExists(to) && !isClosed(to) && verifyAmt(amount))
+		{
+			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
+			if(!checkValidType(from, types))
+			{
+				System.out.println("You cannot perform a wire on this type, please choose another account");
+				return "1";
+			}
+			if(!checkValidType(to, types))
+			{
+				System.out.println("You cannot perform a wire on this type, please choose another account");
+				return "1";
+			}
+
+
+			try( Statement statement = _connection.createStatement() )
+			{
+
+					String result = takeFrom(from, amount * 1.02);
+				
+
+				String[] report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				String newFromBalance = report[2];
+
+
+				result = giveToNotYours(to, amount);
+
+				report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				else
+					return "0 " + newFromBalance + " " + report[2];
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
+		}
+		else
+			return "1";
+	}
+
+	private void wireInterface()
+	{
+		System.out.println("Choose account to take from: ");
+		String from = acctInterface();
+		System.out.println("Choose account to give to: ");
+		String to = getAcct();
+			
+			
+	
+		double acctDoub = -1.0;
+		boolean cont = true;
+		while(cont)
+		{
+			acctDoub = amtInterface();
+			if(acctDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+		
+		
+		String result = wire( from, to, acctDoub);
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the wire, aborting...");
+		}
+		else{
+			System.out.println("Wire Successful! Balance of From Account is $" + report[1] + " and balance of To Account is $" + report[2] +".");
+		}
+	}
+
+
 	/**
 	 * Another example.
 	 */
@@ -931,55 +1197,33 @@ public class App implements Testable
 
 	public void startATMInterface()
 	{
-		checkPIN();
+
+		System.out.println("Hello! Welcome to the ATM Interface!");
+
+		signIn();
 		
-		boolean cont = true;
-		while(cont)
+		transact();
+	}
+
+	public void signIn()
+	{
+		System.out.println("What is your name?");
+		String name = input.next();
+
+		System.out.println("Please insert your PIN:");
+		String inputPin = input.next();
+
+		if(!verifySignIn(name, inputPin))
 		{
-			transact();
-			System.out.println("Would you like to make another transaction?\n\"1\"\tYes\n\"0\"\tNo");
-			String repeat = input.next();
-			
-			boolean rep = repeat.equals(1);
-			if(!rep)
-			{
-			   cont = false;
-			}
+			System.out.println("INVALID LOGIN: Please try again.");
+			signIn();
 		}
 
-		goodbye();
-	}
-	
-	public void checkPIN()
-	{
-		boolean cont = true;
-			System.out.println("Please insert your PIN:");
-			String inputPin = input.next();
-			
-			if(verifyPIN(inputPin))
-			{
-				cont = false;
-			}
-			else{
-				System.out.println("The PIN you inputed was invalid. Would you like to try again?\n\"1\"\tYes\n\"0\"\tNo");
-				String repeat = input.next();
-				
-				boolean rep = repeat.equals("1");
-				if(rep)
-				{
-				   checkPIN();
-				}
-				else
-				{
-					goodbye();
-				}
-			}
 	}
 
-
-	private boolean verifyPIN(String inputPin)
+	private boolean verifySignIn(String name, String inputPin)
 	{
-		String query = "select pin, tid from Customer";
+		String query = "select name, pin, tid from Customer";
 
 		//inputPin = Integer.toString(inputPin.hashCode());
 		try( Statement statement = _connection.createStatement() )
@@ -988,11 +1232,12 @@ public class App implements Testable
 			{
 				while( resultSet.next() )
 				{
-					String temp = resultSet.getString(1);
-					if (temp.trim().equals(inputPin.trim()))
+					String tempName = resultSet.getString(1);
+					String tempPin = resultSet.getString(2);
+					if (tempName.trim().equals(name.trim()) && tempPin.trim().equals(inputPin.trim()))
 					{
 						System.out.println("PIN VERIFIED");
-						customerTaxID = resultSet.getString(2);
+						customerTaxID = resultSet.getString(3);
 						return true;
 					}
 				}
@@ -1006,9 +1251,12 @@ public class App implements Testable
 		return false;
 	}
 
+
+	
+
 	private void transact()
 	{
-		String[] actions = {"Deposit", "Top-Up", "Withdrawal", "Purchase", "Transfer", "Collect", "Wire", "Pay-Friend"};
+		String[] actions = {"Deposit", "Top-Up", "Withdrawal", "Purchase", "Transfer", "Collect", "Wire", "Pay-Friend", "Exit"};
 		System.out.println("What would you like to do?:");
 
 		for(int i = 0; i < actions.length; i++)
@@ -1042,23 +1290,41 @@ public class App implements Testable
 		} else if(actIn.equals("7"))
 		{
 			payFriendInterface();
+		} else if(actIn.equals("8"))
+		{
+			goodbye(); 
 		} else {
 			System.out.println("Invalid input, please try again!");
 			transact();
 			goodbye();
 		}
 
-		System.out.println("Your transaction is complete! Would you like to perform another transaction?\n\"1\"\tYes\n\"0\"\tNo");
-		String repeat = input.next().trim();
-				
-		boolean rep = repeat.equals("1");
+		System.out.println("Your transaction is complete!");
+		transact();
+	}
 
-		if(rep)
+	@Override
+	public String showBalance( String accountId )
+	{
+				
+		try(Statement statement = _connection.createStatement())
 		{
-			transact();
+			try( ResultSet resultSet = statement.executeQuery( "select aid, balance from account" ) )
+			{
+				while( resultSet.next() ){
+					if(resultSet.getString(1).trim().equals(accountId.trim()))
+					{
+						return "0 " + resultSet.getString(2);
+					}
+				}
+			}
+			return "1";
+			
 		}
-		else{
-			goodbye();
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
 		}
 	}
 
