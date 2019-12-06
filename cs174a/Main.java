@@ -36,7 +36,7 @@ public class Main
 			//app.exampleAccessToDB();                // Example on how to connect to the DB.
 			//app.dropTables();
 			//app.createTables();
-			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "11390", 1234.56, "test2190", "test22", "Known");
+			//r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "43942", 1,289.0, "361721022", "Alfred Hitchcock", "6667 El Colegio #40");
 			app.startSystemsInterface();
 			//app.startATMInterface();
 			//app.startBankTellerInterface();
