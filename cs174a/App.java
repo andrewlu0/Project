@@ -1767,11 +1767,8 @@ public class App implements Testable
 			return true;
 		}
 	}
-<<<<<<< HEAD
-=======
 
 
->>>>>>> 355d0029273c5ccef94b7be1684ecc723ab8b127
 
 	private void closeAccount(String acctId)
 	{

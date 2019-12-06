@@ -34,18 +34,12 @@ public class Main
 		if( r.equals( "0" ) )
 		{
 			//app.exampleAccessToDB();                // Example on how to connect to the DB.
-<<<<<<< HEAD
-			//app.startATMInterface();
-			app.startBankTellerInterface();
-			//app.setDate(2020,11,30);
-=======
 
 			app.startSystemsInterface();
 			//app.startATMInterface();
 			//app.startBankTellerInterface();
 			//app.setDate(2020,9,1);
 
->>>>>>> 355d0029273c5ccef94b7be1684ecc723ab8b127
 			// Example tests.  We'll overwrite your Main.main() function with our final tests.
 			r = app.listClosedAccounts();
 			System.out.println( r );
