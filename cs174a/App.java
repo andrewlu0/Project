@@ -360,7 +360,7 @@ public class App implements Testable
 		{
 			try( ResultSet resultSet = statement.executeQuery( "select balance from account where aid = \'" + accountId + "\'" ) )
 			{
-				if (resultSet.next())
+				if(resultSet.next())
 					currBalance = resultSet.getDouble(1);
 			}
 
@@ -376,7 +376,36 @@ public class App implements Testable
 	}
 	public String withdraw( String accountId, double amount )
 	{
-		return "0stub";
+		double currBalance = 0.0;
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select balance from account where aid = \'" + accountId + "\'" ) )
+			{
+				if(resultSet.next())
+					currBalance = resultSet.getDouble(1);
+			}
+
+			double newBalance = currBalance - amount;
+
+			if(newBalance < 0.0)
+			{
+				System.out.println("Insufficient funds, withdrawal aborted");
+				return "1 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", currBalance);
+			}
+			else if(newBalance < 0.01)
+			{
+				System.out.println("Balance of account after withdrawal is < 0.01, account will be closed after process finishes");
+				closeAccount(accountId);
+			}
+
+			statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+			return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", currBalance);
+		}
 	}
 	@Override
 	public String showBalance( String accountId )
@@ -511,7 +540,7 @@ public class App implements Testable
 
 	private boolean verifyPIN(String inputPin)
 	{
-		String query = "select pin, tid, from Customer";
+		String query = "select pin, tid from Customer";
 
 		inputPin = Integer.toString(inputPin.hashCode());
 		try( Statement statement = _connection.createStatement() )
@@ -603,17 +632,35 @@ public class App implements Testable
 		boolean valid = false;
 		try( Statement statement = _connection.createStatement() )
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select aid from Account" ) )
+			try( ResultSet resultSet = statement.executeQuery( "select aid, tid, is_closed from Account" ) )
 			{
 				while( resultSet.next() )
 					if (resultSet.getString(1).equals(acctId))
 					{
 						System.out.println( "Account ID is Valid");
-						valid = true;
-						return acctId;
+						if(resultSet.getString(2).equals(customerTaxID))
+						{
+							System.out.println("Account Verified to belong to you");
+							valid = true;
+						}
+						else{
+							System.out.println("You do not have access to requested account, please choose another account");
+							return getAcct();
+						}
+						
+						if(resultSet.getInt(3) == 1)
+						{
+							System.out.println("Account is close, transaction cannot be performed, please choose another account");
+							return getAcct();
+						}
+						else
+						{
+							return acctId;
+						}
+						
 					}
 			}
-			System.out.println("Account ID is Invalid");
+			System.out.println("Account ID is Invalid, please choose another account");
 		}
 		catch( final SQLException e )
 		{
@@ -624,22 +671,43 @@ public class App implements Testable
 
 	private double verifyAmount()
 	{
-		String dep = input.next();
+		String amt = input.next();
+
+
 		try{
-			double depDoub = Double.parseDouble(dep);
+			double amtDoub = Math.floor(Double.parseDouble(amt)) / 100.0;
+			if(amtDoub < 0.0)
+			{
+				System.out.println("Invalid amount!");
+				return -1.0;
+			}
 			return depDoub;
 		}
 		catch(NumberFormatException e){
-			System.out.println("Invalid deposit amount!");
+			System.out.println("Invalid amount!");
 			return -1.0;
 		}
 	}
 
 	private void depositHelper()
 	{
-		String acctId = getAcct();
-		double depDoub = -1.0;
 		boolean cont = true;
+		String acctId = "invalid";
+		while(cont)
+		{
+			acctId = getAcct();
+
+			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"}
+			if(!checkValidType(acctId, types))
+			{
+				System.out.println("You cannot perform a deposit on a account of this type, please choose another account");
+			}
+			else{
+				cont = false;
+			}
+		}
+		double depDoub = -1.0;
+		cont = true;
 		while(cont)
 		{
 			System.out.println("What amount would you like to deposit?");
@@ -669,7 +737,35 @@ public class App implements Testable
 
 	private void withdrawalHelper()
 	{
+		boolean cont = true;
+		String acctId = "invalid";
+		while(cont)
+		{
+			acctId = getAcct();
 
+			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
+			if(!checkValidType(acctId, types))
+			{
+				System.out.println("You cannot perform a deposit on a account of this type, please choose another account");
+			}
+			else{
+				cont = false;
+			}
+		}
+
+		double withDoub = -1.0;
+		cont = true;
+		while(cont)
+		{
+			System.out.println("What amount would you like to withdraw?");
+			withDoub = verifyAmount();
+			if(withDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+
+		
 	}
 
 	private void purchaseHelper()
@@ -756,26 +852,65 @@ public class App implements Testable
 					startBankTellerInterface();
 			}
 			System.out.println("Would you like to perform another action?\n1:\tYes\nAny Other Key:\tNo");
-
-			if(!input.next().equals("1"))
+      if(!input.next().equals("1"))
 			{
 			   cont = false;
 			}
 		}
 		goodbye();
 	}
+
+
+	private boolean checkValidType(String acctID, String[] validType)
+	{
+		String acctType = "invalid";
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid, type from Account where aid = " + acctID ) )
+			{
+				if(resultSet.next())
+					acctType = resultSet.getString(2);
+			}
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1";
+		}
+
+		for(String i : validType)
+		{
+			if(i.equals(acctType))
+			{
+				return true;
+			}
+			else{
+				return false;
+			}
+		}
+	}
+
+	
+
+			
 	private void enterCheckTransaction(){
 		String acctId = getAcct();
 		System.out.println("How much is the check?");
 		double amt = verifyAmount();
 		withdraw(acctId,amt);
-		try( Statement statement = _connection.createStatement() )
-		{
+  }
 		
+
+private void closeAccount(String acctId)
+	{
+		try(Statement statement = _connection.createStatement())
+		{
+			statement.executeQuery( "update account set is_closed = 1 where aid = \'" + acctId+ "\'");
 		}
 		catch( final SQLException e )
 		{
 			System.err.println( e.getMessage() );
 		}
 	}
+
 }
