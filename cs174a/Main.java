@@ -41,9 +41,9 @@ public class Main
 			System.out.println( r );
 
 			// Another example test.
-			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "334", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
+			//r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "334", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
 			//r = app.updateInterest(AccountType.SAVINGS,9.1);
-			app.createTransaction("","233",true,1.3,"DEPOSIT");
+			app.createTransaction("334","",false,11111.3,"DEPOSIT");
 			//app.createPocketAccount("pocket4","checking",29.9,"bbb");
 			System.out.println( r );
 		}

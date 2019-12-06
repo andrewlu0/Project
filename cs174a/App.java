@@ -273,7 +273,7 @@ public class App implements Testable
 			statement.executeQuery(query);
 			createOwn(id,tin);
 			createLinkedTo(id,linkedId);
-			withdraw(linkedId,initialTopUp);
+			topUp(id,initialTopUp);
 			return "0 " + id + " AccountType.POCKET " + initialTopUp + " " + tin;
 		}
 		catch( SQLException e )
@@ -642,6 +642,10 @@ public class App implements Testable
 	
 	public String updateInterest(final AccountType accountType, double newRate)
 	{
+		if (newRate < 0 || newRate > 100){
+			System.out.println("Invalid rate");
+			return "1";
+		}	
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery( "update account set interest_rate =" + newRate + "where type=\'"+accountType+"\'");
@@ -1262,7 +1266,6 @@ public class App implements Testable
 						System.out.println("No transactions this month.");
 					while( resultSet.next() )
 					{
-						System.out.println(resultSet.getString(1));
 						if (resultSet.getString(2).substring(0,4).equals(year) && resultSet.getString(2).substring(5,7).equals(month)){
 							// System.out.println(resultSet.getString(2).substring(0,4)+" "+resultSet.getString(2).substring(5,7));
 							net = String.format("%.2f", resultSet.getDouble(6));
@@ -1409,6 +1412,59 @@ public class App implements Testable
 		}
 		int day = Integer.valueOf(getDate().substring(8,10));
 		System.out.println(day);
+		ArrayList<String> accounts = new ArrayList<String>();
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid from account where is_closed=0 and interest_rate !=0"))
+			{
+				while( resultSet.next() )
+				{
+					accounts.add(resultSet.getString(1));
+				}
+			}		
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+		for (String aid : accounts){
+			double currbal=0.0,potential = 0.0,interest_rate=0.0;
+			String net = "";
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet balance = statement.executeQuery("select balance,interest_rate from account where aid=\'" + aid + "\'"))
+				{
+					if(balance.next()){
+						currbal = balance.getDouble(1);
+						interest_rate = balance.getDouble(2);
+						potential = day * currbal;
+					}
+						
+					ResultSet resultSet = statement.executeQuery("select * from transaction "
+																		+"where (to_aid=\'"+aid+"\' "
+																		+"or from_aid =\'"+aid+"\') ");
+
+					while( resultSet.next() )
+					{
+						net = String.format("%.2f", resultSet.getDouble(6));
+						if (aid.equals(resultSet.getString(4))){
+							net = "-" + net;
+						}
+						int trans_day = Integer.valueOf(resultSet.getString(2).substring(8,10));
+						System.out.println("trans" + trans_day);
+						potential -= (Double.valueOf(net) * (trans_day-1));
+					}
+				}	
+				double adb = potential / day;
+				double new_bal = currbal + (adb*(interest_rate/100));	
+				statement.executeQuery("update account set balance=" + new_bal + "where aid=\'" + aid + "\'"))
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+			}
+			
+		}
 	}
 	private void createAccount(){
 		System.out.println("Enter account type:\n"
