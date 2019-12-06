@@ -423,7 +423,27 @@ public class App implements Testable
 	@Override
 	public String showBalance( String accountId )
 	{
-		return "0stub";
+		double currBalance = 0.0;
+				
+		try(Statement statement = _connection.createStatement())
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid, balance from account" ) )
+			{
+				while( resultSet.next() ){
+					if(resultSet.getString(1).trim().equals(accountId))
+					{
+						return "0 " + String.format("%.2f", currBalance);
+					}
+				}
+			}
+			return "1 " + String.format("%.2f", currBalance);
+			
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return "1 " + String.format("%.2f", currBalance);
+		}
 	}
 	@Override
 	public String topUp( String accountId, double amount )
@@ -748,6 +768,47 @@ public class App implements Testable
 
 	private void topUpHelper()
 	{
+		boolean cont = true;
+		String acctId = "invalid";
+		while(cont)
+		{
+			acctId = getAcct();
+
+			String[] types = {"POCKET"};
+			if(!checkValidType(acctId, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+			}
+			else{
+				cont = false;
+			}
+		}
+		double pockDoub = -1.0;
+		cont = true;
+		while(cont)
+		{
+			System.out.println("What amount would you like to top-up?");
+			pockDoub = verifyAmount();
+			if(pockDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+		if(chargePocketFlatFee(acctId))
+		{
+			pockDoub += 5.0;
+		}
+
+		String result = topUp( acctId, pockDoub);
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the deposit, aborting...");
+		}
+		else{
+			System.out.println("Top-Up Successful! Balance of Account " + acctId + " is $" + report[1] + " and balance of linked account is $" + report[2] +".");
+		}
 		
 	}
 
@@ -861,7 +922,33 @@ public class App implements Testable
 		return false;
 	}
 
-	
+	private boolean chargePocketFlatFee(String acctId)
+	{
+		String month = getDate().substring(5,7);
+		String year = getDate().substring(0,4);
+
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select t_date from transactions where aid = " + acctId ) )
+			{
+				while( resultSet.next() )
+					if (resultSet.getString(1).getDate().substring(0,7).equals(year + "/"+ month))
+					{
+						System.out.println("Flat Fee charged already this month");
+						return false;
+					}
+
+					System.out.println("First transaction for this pocket account this month, $5 flat fee will be charged");
+					return true;
+			}
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+		
+		
+	}
 	//-------------------------------BANK TELLER INTERFACE-----------------------------------------
 	public void startBankTellerInterface()
 	{
