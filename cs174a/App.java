@@ -113,6 +113,7 @@ public class App implements Testable
 						  "customer",
 						  "linked_to",
 						  "requests",
+						  "monthly_tasks",
 						  "system_date"
 						)); 
 		try( Statement statement = _connection.createStatement() )
@@ -188,6 +189,13 @@ public class App implements Testable
 						+"PRIMARY KEY(poc_aid, aid),"
 						+"FOREIGN KEY(poc_aid) REFERENCES account(aid),"
 						+"FOREIGN KEY(aid) REFERENCES account(aid) ON DELETE CASCADE)";
+		String create_monthly_tasks = "create table monthly_tasks("
+									+"month char(20),"
+									+"year char(20),"
+									+"add_interest integer,"
+									+"delete_closed integer,"
+									+"delete_trans integer,"
+									+"primary key (month,year))";
 		String create_system_date = "CREATE TABLE system_date("
 						+"system_date DATE)";
 
@@ -202,6 +210,7 @@ public class App implements Testable
 			statement.executeQuery(create_requests);
 			statement.executeQuery(create_linked_to);
 			statement.executeQuery(create_system_date);
+			statement.executeQuery(create_monthly_tasks);
 			statement.executeQuery(create_check_id);
 			//Set date to current date
 			Calendar calendar = Calendar.getInstance();
@@ -214,6 +223,8 @@ public class App implements Testable
 			statement.executeQuery("delete from system_date");
 			String set_date = "insert into system_date(system_date) values (TO_DATE(\'" + year + "-" + month + "-" + day + "\',\'YYYY-MM-DD\'))";
 			statement.executeQuery(set_date);
+			String set_tasks = "insert into monthly_tasks values(\'" + month + "\',\'" + year + "\',0,0,0)";
+			statement.executeQuery(set_tasks);
 			return "0";
 		}
 		catch( SQLException e )
@@ -253,9 +264,39 @@ public class App implements Testable
 		String syear = String.valueOf(year);
 		String smonth = String.valueOf(month);
 		String sday = String.valueOf(day);
+		String currmonth = "";
+		String curryear = "";
 		try( Statement statement = _connection.createStatement() )
 		{
+			ResultSet currdate = statement.executeQuery("select system_date from system_date");
+			if (currdate.next()){
+				currmonth = currdate.getString(1).substring(5,7);
+				curryear = currdate.getString(1).substring(0,4);
+			}
+			if (year > Integer.valueOf(curryear) || (year == Integer.valueOf(curryear) && month > Integer.valueOf(currmonth))){
+				System.out.println("going forward");
+				System.out.println("select add_interest, delete_closed, delete_trans from monthly_tasks where month=\'"+currmonth.substring(1,2)+
+														"\' and year=\'" + curryear +"\'");
+				ResultSet check = statement.executeQuery("select add_interest, delete_closed, delete_trans from monthly_tasks where month=\'"+currmonth.substring(1,2 )+
+														"\' and year=\'" + curryear +"\'");
+				if (check.next()){
+					System.out.println(check.getInt(1) + " " + check.getInt(2) + " " + check.getInt(3));
+					if ((check.getInt(1)+check.getInt(2)+check.getInt(3))!=3){
+						System.out.println("Cannot change date. Monthly tasks not complete. Setting date to final date of month");
+						ResultSet lastday = statement.executeQuery("select last_day(system_date) from system_date");
+						if (lastday.next())
+							day = Integer.valueOf(lastday.getString(1).substring(8,10));
+							setDate(Integer.valueOf(curryear),Integer.valueOf(currmonth),day);
+							return "1";
+					}
+				}
+			}
 			statement.executeQuery( "update system_date set system_date = TO_DATE(\'" + year + "-" + month + "-" + day + "\',\'YYYY-MM-DD\')");
+			String add_tasks = "insert into monthly_tasks values (\'" + smonth + "\',\'" + year + "\',0,0,0)";
+			ResultSet rs = statement.executeQuery("select * from monthly_tasks where  month=\'" +smonth+ "\' and year=\'" + syear + "\'");
+			if (!rs.next()){
+				statement.executeQuery(add_tasks);
+			}
 			return "0 " + year + "-" + month + "-" + day;
 		}
 		catch( final SQLException e )
@@ -335,7 +376,6 @@ public class App implements Testable
 		query += (from_acct.length() >0) ? "\'" + from_acct + "\'," : "NULL,";
 		query += (check) ? "seq_check.nextval," : "NULL,";
 		query += amount + ",\'"+type+"\')";
-		System.out.println(query);
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
@@ -1520,14 +1560,13 @@ public class App implements Testable
 			}
 		}
 	}	
-	//TODO
+
 	private void addInterest(){
 		if (!isLastDay()){
 			System.out.println("Can only add interest on last day of month.\n");
 			return;
 		}
 		int day = Integer.valueOf(getDate().substring(8,10));
-		System.out.println(day);
 		ArrayList<String> accounts = new ArrayList<String>();
 		try( Statement statement = _connection.createStatement() )
 		{
@@ -1567,19 +1606,21 @@ public class App implements Testable
 							net = "-" + net;
 						}
 						int trans_day = Integer.valueOf(resultSet.getString(2).substring(8,10));
-						System.out.println("trans" + trans_day);
 						potential -= (Double.valueOf(net) * (trans_day-1));
 					}
 				}	
 				double adb = potential / day;
-				double new_bal = currbal + (adb*(interest_rate/100));	
+				double to_add = (adb*(interest_rate/100));
+				double new_bal = currbal + to_add;	
 				statement.executeQuery("update account set balance=" + new_bal + "where aid=\'" + aid + "\'");
+				createTransaction(aid,aid,false,to_add,"ACCRUE-INTEREST");
+				statement.executeQuery("update monthly_tasks set add_interest=1");
+				System.out.println("Interest added.\n");
 			}
 			catch( final SQLException e )
 			{
 				System.err.println( e.getMessage() );
 			}
-			
 		}
 	}
 	private void createAccount(){
@@ -1643,6 +1684,7 @@ public class App implements Testable
 		{
 			statement.executeQuery("delete from account where is_closed=1");
 			statement.executeQuery("delete from customer where tid not in (select tid from account)");
+			statement.executeQuery("update monthly_tasks set delete_closed=1");
 			System.out.println("Closed accounts and customers deleted.");
 		}
 		catch( final SQLException e )
@@ -1659,6 +1701,8 @@ public class App implements Testable
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery("delete from transaction");
+			statement.executeQuery("update monthly_tasks set delete_trans=1");
+			System.out.println("Transactions deleted");
 		}
 		catch( final SQLException e )
 		{
