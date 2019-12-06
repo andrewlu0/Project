@@ -488,7 +488,7 @@ public class App implements Testable
 		System.exit(0);
 	}
 
-	//-----------------------------------------------------------------------------------
+	//-----------------------------------ATM/App Interface------------------------------------------------
 
 	public void startATMInterface()
 	{
@@ -608,7 +608,7 @@ public class App implements Testable
 			goodbye();
 		}
 
-		System.out.println("Your transaction is complete, would you like to perform another transaction?\n\"1\"\tYes\n\"0\"\tNo");
+		System.out.println("Your transaction is complete! Would you like to perform another transaction?\n\"1\"\tYes\n\"0\"\tNo");
 		String repeat = input.next();
 				
 		boolean rep = repeat.equals(1);
@@ -681,7 +681,7 @@ public class App implements Testable
 				System.out.println("Invalid amount!");
 				return -1.0;
 			}
-			return depDoub;
+			return amtDoub;
 		}
 		catch(NumberFormatException e){
 			System.out.println("Invalid amount!");
@@ -792,6 +792,47 @@ public class App implements Testable
 	{
 
 	}
+
+	private void closeAccount(String acctId)
+	{
+		try(Statement statement = _connection.createStatement())
+		{
+			statement.executeQuery( "update account set is_closed = 1 where aid = \'" + acctId+ "\'");
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+	}
+
+	private boolean checkValidType(String acctID, String[] validType)
+	{
+		String acctType = "invalid";
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid, type from Account where aid = " + acctID ) )
+			{
+				if(resultSet.next())
+					acctType = resultSet.getString(2);
+			}
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return false;
+		}
+
+		for(String i : validType)
+		{
+			if(i.equals(acctType))
+			{
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
 	
 	//-------------------------------BANK TELLER INTERFACE-----------------------------------------
 	public void startBankTellerInterface()
@@ -858,39 +899,7 @@ public class App implements Testable
 			}
 		}
 		goodbye();
-	}
-
-
-	private boolean checkValidType(String acctID, String[] validType)
-	{
-		String acctType = "invalid";
-		try( Statement statement = _connection.createStatement() )
-		{
-			try( ResultSet resultSet = statement.executeQuery( "select aid, type from Account where aid = " + acctID ) )
-			{
-				if(resultSet.next())
-					acctType = resultSet.getString(2);
-			}
-		}
-		catch( SQLException e )
-		{
-			System.err.println( e.getMessage() );
-			return "1";
-		}
-
-		for(String i : validType)
-		{
-			if(i.equals(acctType))
-			{
-				return true;
-			}
-			else{
-				return false;
-			}
-		}
-	}
-
-	
+	}	
 
 			
 	private void enterCheckTransaction(){
@@ -901,16 +910,6 @@ public class App implements Testable
   }
 		
 
-private void closeAccount(String acctId)
-	{
-		try(Statement statement = _connection.createStatement())
-		{
-			statement.executeQuery( "update account set is_closed = 1 where aid = \'" + acctId+ "\'");
-		}
-		catch( final SQLException e )
-		{
-			System.err.println( e.getMessage() );
-		}
-	}
+	
 
 }
