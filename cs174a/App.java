@@ -533,6 +533,62 @@ public class App implements Testable
 		}
 	}
 
+	private String purchase(String aid, double amount)
+	{
+		if(verifyAcct(aid) && verifyAmt(amount))
+			{
+				String[] types = {"POCKET"};
+				if(!checkValidType(aid, types))
+				{
+					System.out.println("You cannot perform a purchase on a account of this type");
+					return "1";
+				}
+
+				if(chargePocketFlatFee(aid))
+				{
+					System.out.println(aid);
+					return takeFrom(aid, amount+5.0);
+				}
+				else
+					return takeFrom(aid, amount);
+				
+
+			}
+			else
+				return "1";
+	}
+
+	private void purchaseInterface(){
+		boolean cont = true;
+		String acctId = "invalid";
+
+			acctId = acctInterface();
+
+
+		double withDoub = -1.0;
+		cont = true;
+		while(cont)
+		{
+			withDoub = amtInterface();
+			if(withDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+
+		String result = purchase(acctId, withDoub);
+
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the withdrawal, aborting...");
+		}
+		else{
+			System.out.println("Purchase Successful! Balance of Account " + acctId + " went from $" + report[1] + " to $" + report[2] +".");
+		}
+	}
+
 
 	@Override
 	public String showBalance( String accountId )
@@ -889,7 +945,6 @@ public class App implements Testable
 			{
 				while( resultSet.next() )
 				{
-					System.out.println(resultSet.getString(1));
 					String temp = resultSet.getString(1);
 					if (temp.trim().equals(inputPin.trim()))
 					{
@@ -931,7 +986,7 @@ public class App implements Testable
 			withdrawalInterface();
 		} else if(actIn.equals("3"))
 		{
-			purchaseHelper();
+			purchaseInterface();
 		} else if(actIn.equals("4"))
 		{
 			transferHelper();
@@ -1170,7 +1225,7 @@ public class App implements Testable
 	{
 		try( Statement statement = _connection.createStatement() )
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select tid from Account where aid = " + aid ) )
+			try( ResultSet resultSet = statement.executeQuery( "select tid from own where aid = " + aid ) )
 			{
 				if(resultSet.next())
 				{
@@ -1220,7 +1275,7 @@ public class App implements Testable
 
 	private double amtInterface()
 	{
-		System.out.println("What amount would you like to deposit?");
+		System.out.println("What amount would you like to transact?");
 		String amt = input.next();
 		double amtDoub = 0.0;
 		try{
@@ -1257,10 +1312,7 @@ public class App implements Testable
 
 	
 
-	private void purchaseHelper()
-	{
-		
-	}
+
 
 	private void transferHelper()
 	{
