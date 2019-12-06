@@ -1244,7 +1244,7 @@ public class App implements Testable
 	{
 		String query = "select name, pin, tid from Customer";
 
-		inputPin = Integer.toString(inputPin.hashCode());
+		pin = Integer.toString(pin.hashCode());
 		try( Statement statement = _connection.createStatement() )
 		{
 			try( ResultSet resultSet = statement.executeQuery(query) )
