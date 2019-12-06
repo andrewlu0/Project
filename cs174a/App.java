@@ -298,6 +298,21 @@ public class App implements Testable
 			System.err.println( e.getMessage());
 		}
 	}
+	private String getDate(){
+		String date = "";
+		try( Statement statement = _connection.createStatement() )
+		{
+			ResultSet rs = statement.executeQuery("select * from system_date");
+			if (rs.next()){
+				date = rs.getString(1);
+			}
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage());
+		}
+		return date;
+	}
 	/**
 	 * Create a entry in Transaction table
 	 * @param to_acct Source of transaction, "" if NULL
@@ -308,19 +323,7 @@ public class App implements Testable
 	 */
 	public void createTransaction(String to_acct,String from_acct,boolean check,double ammount,String type){
 		String query = "insert into transaction values(seq_tran.nextval,";
-		String date = "";
-		try( Statement statement = _connection.createStatement() )
-		{
-			ResultSet rs = statement.executeQuery("select * from system_date");
-			if (rs.next()){
-				date = rs.getString(1);
-				System.out.println(date);
-			}
-		}
-		catch( SQLException e )
-		{
-			System.err.println( e.getMessage());
-		}
+		String date = getDate();
 		query += "TO_DATE(\'" + date.substring(0,10) + "\',\'YYYY-MM-DD\'),";
 		query += (to_acct.length() > 0) ? "\'" + to_acct + "\',": "NULL,";
 		query += (from_acct.length() >0) ? "\'" + from_acct + "\'," : "NULL,";
@@ -889,10 +892,12 @@ public class App implements Testable
 					enterCheckTransaction();
 					break;
 				case "1":
-					enterCheckTransaction();
+					generateMonthlyStatement();
 					break;
 				case "2":
-					enterCheckTransaction();
+					System.out.println("Closed accounts:");
+					String closed = listClosedAccounts();
+					System.out.println(closed.substring(2,closed.length())+"\n");
 					break;
 				case "3":
 					enterCheckTransaction();
@@ -933,8 +938,98 @@ public class App implements Testable
 		withdraw(acctId,amt);
 		createTransaction("",acctId,true,amt,"WRITE-CHECK");
   	}
-		
 
+	private void generateMonthlyStatement(){
+		System.out.println("Enter customer tax ID:");
+		String tid = input.next();
+		String aid = "";
+		String month = getDate().substring(5,7);
+		String year = getDate().substring(0,4);
+		ArrayList<String> accounts = new ArrayList<String>();
+		ArrayList<Double> balances = new ArrayList<Double>();
+		ArrayList<String> owners = new ArrayList<String>();
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid,tid from own where tid=\'"+tid+"\'"))
+			{
+				while( resultSet.next() )
+				{
+					accounts.add(resultSet.getString(1));
+				}
+			}		
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+		for (int i = 0; i < accounts.size();i++){
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet resultSet = statement.executeQuery( "select balance from account where aid=\'"+accounts.get(i)+"\'"))
+				{
+					while( resultSet.next() )
+					{
+						balances.add(resultSet.getDouble(1));
+					}
+				}		
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+			}
+			aid = accounts.get(i);
+			System.out.println( "Account ID: " + aid);
+			System.out.println( "=====================================================");
+			System.out.println("Transactions:");
+			String net="";
+			String temptype = "";
+			Double currentBalance = balances.get(i);
+			Double initialBalance = currentBalance;
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet resultSet = statement.executeQuery("select * from transaction "
+																		+"where (to_aid=\'"+aid+"\' "
+																		+"or from_aid =\'"+aid+"\') "))
+				{
+					if (!resultSet.next())
+						System.out.println("No transactions this month.");
+					while( resultSet.next() )
+					{
+						if (resultSet.getString(2).substring(0,4).equals(year) && resultSet.getString(2).substring(5,7).equals(month)){
+							net = String.format("%.2f", resultSet.getDouble(6));
+							if (aid.equals(resultSet.getString(4)) && resultSet.getString(7)!="ACCRUE-INTEREST"){
+								net = "-" + net;
+							}
+							initialBalance -= Double.valueOf(net);
+							System.out.println("Date: " + resultSet.getString(2).substring(0,10)+"\tType: " + resultSet.getString(7)+ "\tAmount: "+net);
+						}
+					}
+				}
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+			}
+			System.out.println("Initial Balance: "+initialBalance+"\tCurrent Balance: "+currentBalance);
+			System.out.println("Owners:");
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet resultSet = statement.executeQuery( "select name,addr from customer where tid in (select tid from own where aid=\'"+aid+"\')"))
+				{
+					while( resultSet.next() )
+					{
+						System.out.println("Name: " + resultSet.getString(1) + "\t Address: " + resultSet.getString(2));
+					}
+				}		
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+			}
+			System.out.println("\n");
+		}
+	}
 	
+		
 
 }
