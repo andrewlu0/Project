@@ -2233,6 +2233,7 @@ public class App implements Testable
 							+"5:\tExit");
 		String acctype = input.next();
 		String id,tin;
+		String s;
 		AccountType atype;
 		System.out.println("Enter an account ID:");
 		id = input.next();
@@ -2243,9 +2244,13 @@ public class App implements Testable
 		if (acctype.equals("1") || acctype.equals("2") || acctype.equals("3")){
 			String name, address;
 			System.out.println("Enter primary owner's name:");
-			name = input.next();
+			s = input.next();
+			s += input.nextLine();
+			name = s;
 			System.out.println("Enter primary owner's address:");
-			address = input.next();
+			s = input.next();
+			s += input.nextLine();
+			address = s;
 			if (acctype.equals("1"))
 				atype = AccountType.STUDENT_CHECKING;
 			else if (acctype.equals("2"))
