@@ -535,7 +535,7 @@ public class App implements Testable
 				System.out.println("The PIN you inputed was invalid. Would you like to try again?\n\"1\"\tYes\n\"0\"\tNo");
 				String repeat = input.next();
 				
-				boolean rep = repeat.equals(1);
+				boolean rep = repeat.equals("1");
 				if(rep)
 				{
 				   checkPIN();
@@ -552,14 +552,16 @@ public class App implements Testable
 	{
 		String query = "select pin, tid from Customer";
 
-		inputPin = Integer.toString(inputPin.hashCode());
+		//inputPin = Integer.toString(inputPin.hashCode());
 		try( Statement statement = _connection.createStatement() )
 		{
 			try( ResultSet resultSet = statement.executeQuery(query) )
 			{
 				while( resultSet.next() )
 				{
-					if (resultSet.getString(1).equals(inputPin))
+					System.out.println(resultSet.getString(1));
+					String temp = resultSet.getString(1);
+					if (temp.trim().equals(inputPin.trim()))
 					{
 						System.out.println("PIN VERIFIED");
 						customerTaxID = resultSet.getString(2);
@@ -586,30 +588,30 @@ public class App implements Testable
 			System.out.println(i + ":\t" + actions[i]);
 		}
 
-		String actIn = input.next();
+		String actIn = input.next().trim();
 
-		if(actIn.equals(actions[0]))
+		if(actIn.equals("0"))
 		{
 			depositHelper();
-		} else if(actIn.equals(actions[1]))
+		} else if(actIn.equals("1"))
 		{
 			topUpHelper();
-		} else if(actIn.equals(actions[2]))
+		} else if(actIn.equals("2"))
 		{
 			withdrawalHelper();
-		} else if(actIn.equals(actions[3]))
+		} else if(actIn.equals("3"))
 		{
 			purchaseHelper();
-		} else if(actIn.equals(actions[4]))
+		} else if(actIn.equals("4"))
 		{
 			transferHelper();
-		} else if(actIn.equals(actions[5]))
+		} else if(actIn.equals("5"))
 		{
 			collectHelper();
-		} else if(actIn.equals(actions[6]))
+		} else if(actIn.equals("6"))
 		{
 			wireHelper();
-		} else if(actIn.equals(actions[7]))
+		} else if(actIn.equals("7"))
 		{
 			payfriendHelper();
 		} else {
@@ -619,9 +621,9 @@ public class App implements Testable
 		}
 
 		System.out.println("Your transaction is complete! Would you like to perform another transaction?\n\"1\"\tYes\n\"0\"\tNo");
-		String repeat = input.next();
+		String repeat = input.next().trim();
 				
-		boolean rep = repeat.equals(1);
+		boolean rep = repeat.equals("1");
 
 		if(rep)
 		{
@@ -636,7 +638,7 @@ public class App implements Testable
 	{
 		boolean cont = true;
 
-		System.out.println("What is the Account ID of the account you would like to deposit in?");
+		System.out.println("What is the Account ID of the account you would like to transact in?");
 		String acctId = input.next();
 
 		boolean valid = false;
@@ -662,7 +664,7 @@ public class App implements Testable
 						
 						if(resultSet.getInt(3) == 1)
 						{
-							System.out.println("Account is close, transaction cannot be performed, please choose another account");
+							System.out.println("Account is closed, transaction cannot be performed, please choose another account");
 							return getAcct();
 						}
 						else
@@ -757,7 +759,7 @@ public class App implements Testable
 			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
 			if(!checkValidType(acctId, types))
 			{
-				System.out.println("You cannot perform a deposit on a account of this type, please choose another account");
+				System.out.println("You cannot perform a withdrawal on a account of this type, please choose another account");
 			}
 			else{
 				cont = false;
@@ -774,6 +776,18 @@ public class App implements Testable
 			{
 				cont = false;
 			}
+		}
+
+		String result = withdraw(acctId, withDoub);
+
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the withdrawal, aborting...");
+		}
+		else{
+			System.out.println("Withdrawal Successful! Balance of Account " + acctId + " went from $" + report[1] + " to $" + report[2] +".");
 		}
 
 		
@@ -824,7 +838,7 @@ public class App implements Testable
 			try( ResultSet resultSet = statement.executeQuery( "select aid, type from Account where aid = " + acctID ) )
 			{
 				if(resultSet.next())
-					acctType = resultSet.getString(2);
+					acctType = resultSet.getString(2).trim();
 			}
 		}
 		catch( SQLException e )
