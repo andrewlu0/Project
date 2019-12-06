@@ -406,7 +406,7 @@ public class App implements Testable
 	@Override
 	public String createCustomer( String accountId, String tin, String name, String address ){
 		String address_parse = address.replace("'","\'");
-		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',"+String.valueOf(1717).hashCode()+")";
+		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',"+String.valueOf(1234).hashCode()+")";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(create_c);
@@ -1146,7 +1146,10 @@ public class App implements Testable
 			return "1";
 		}
 		String address_parse = address.replace("'","\'");
-		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',1717)";
+		//System.out.println("ADD" + String.valueOf(1717).hashCode());
+		String hash = String.valueOf(1717);
+		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',"+String.valueOf(hash.hashCode()).substring(0,4)+")";
+		
 		try( Statement statement = _connection.createStatement() )
 		{
 			ResultSet rs = statement.executeQuery("select * from customer where tid =\'" +tin+ "\'");
@@ -1584,7 +1587,7 @@ public class App implements Testable
 	{
 		try( Statement statement = _connection.createStatement() )
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select aid from Account where aid = " + aid ) )
+			try( ResultSet resultSet = statement.executeQuery( "select aid from Account where aid = \'" + aid +"\'") )
 			{
 				if(resultSet.next())
 					return true;
