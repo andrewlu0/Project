@@ -20,6 +20,7 @@ public class App implements Testable
 	private OracleConnection _connection;                   // Example connection object to your DB.
 	public static Scanner input = new Scanner(System.in);
 	String customerTaxID;
+	boolean isBankTeller = false;
 
 	/**
 	 * Default constructor.
@@ -118,6 +119,8 @@ public class App implements Testable
 				System.out.println(table_names.get(i));
 				statement.executeQuery("drop table " + table_names.get(i) + " cascade constraints");
 			}
+			statement.executeQuery("drop sequence seq_tran");
+			statement.executeQuery("drop sequence seq_check");
 			return "0";
 		}
 		catch( SQLException e )
@@ -132,10 +135,15 @@ public class App implements Testable
 	@Override
 	public String createTables()
 	{
-		String create_tran_id = "CREATE SEQUENCE seq_tran"
-							+"MINVALUE 1"
-							+"START WITH 1"
-							+"INCREMENT BY 1"
+		String create_tran_id = "CREATE SEQUENCE seq_tran "
+							+"MINVALUE 1 "
+							+"START WITH 1 "
+							+"INCREMENT BY 1 "
+							+"CACHE 10";
+		String create_check_id = "CREATE SEQUENCE seq_check "
+							+"MINVALUE 1 "
+							+"START WITH 1 "
+							+"INCREMENT BY 1 "
 							+"CACHE 10";
 		String create_customer = "CREATE TABLE CUSTOMER (" 
 							+"tid CHAR(20),"
@@ -162,6 +170,7 @@ public class App implements Testable
                             +"t_date DATE NOT NULL,"
                             +"to_aid CHAR(20),"
                             +"from_aid CHAR(20),"
+							+"CONSTRAINT chkIsNotNull CHECK (to_aid is not null or from_aid is not null),"
                             +"check_num INTEGER,"
                             +"amount DECIMAL(20,2),"
                             +"type CHAR(20),"
@@ -197,6 +206,7 @@ public class App implements Testable
 			statement.executeQuery(create_modifies);
 			statement.executeQuery(create_linked_to);
 			statement.executeQuery(create_system_date);
+			statement.executeQuery(create_check_id);
 			//Set date to current date
 			Calendar calendar = Calendar.getInstance();
 			SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
@@ -296,7 +306,7 @@ public class App implements Testable
 	 * @param ammount Ammount of transaction.
 	 * @param type Type of transaction.
 	 */
-	public void createTransaction(String to_acct,String from_acct,int check,double ammount,String type){
+	public void createTransaction(String to_acct,String from_acct,boolean check,double ammount,String type){
 		String query = "insert into transaction values(seq_tran.nextval,";
 		String date = "";
 		try( Statement statement = _connection.createStatement() )
@@ -314,7 +324,7 @@ public class App implements Testable
 		query += "TO_DATE(\'" + date.substring(0,10) + "\',\'YYYY-MM-DD\'),";
 		query += (to_acct.length() > 0) ? "\'" + to_acct + "\',": "NULL,";
 		query += (from_acct.length() >0) ? "\'" + from_acct + "\'," : "NULL,";
-		query += (check >= 0 ) ? check + "," : "NULL,";
+		query += (check) ? "seq_check.nextval," : "NULL,";
 		query += ammount + ",\'"+type+"\')";
 		System.out.println(query);
 		try( Statement statement = _connection.createStatement() )
@@ -634,10 +644,12 @@ public class App implements Testable
 		{
 			try( ResultSet resultSet = statement.executeQuery( "select aid, tid, is_closed from Account" ) )
 			{
-				while( resultSet.next() )
-					if (resultSet.getString(1).equals(acctId))
+				while( resultSet.next() ){
+					if (resultSet.getString(1).trim().equals(acctId))
 					{
 						System.out.println( "Account ID is Valid");
+						if (isBankTeller)
+							return acctId;
 						if(resultSet.getString(2).equals(customerTaxID))
 						{
 							System.out.println("Account Verified to belong to you");
@@ -659,6 +671,7 @@ public class App implements Testable
 						}
 						
 					}
+				}
 			}
 			System.out.println("Account ID is Invalid, please choose another account");
 		}
@@ -672,10 +685,8 @@ public class App implements Testable
 	private double verifyAmount()
 	{
 		String amt = input.next();
-
-
 		try{
-			double amtDoub = Math.floor(Double.parseDouble(amt)) / 100.0;
+			double amtDoub = Math.floor(Double.parseDouble(amt)*100) / 100.0;
 			if(amtDoub < 0.0)
 			{
 				System.out.println("Invalid amount!");
@@ -697,7 +708,7 @@ public class App implements Testable
 		{
 			acctId = getAcct();
 
-			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"}
+			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
 			if(!checkValidType(acctId, types))
 			{
 				System.out.println("You cannot perform a deposit on a account of this type, please choose another account");
@@ -838,6 +849,7 @@ public class App implements Testable
 	public void startBankTellerInterface()
 	{
 		boolean cont = true;
+		isBankTeller = true;
 		while(cont)
 		{
 			String[] actions = {"Enter Check Transaction", 
@@ -893,10 +905,8 @@ public class App implements Testable
 					startBankTellerInterface();
 			}
 			System.out.println("Would you like to perform another action?\n1:\tYes\nAny Other Key:\tNo");
-      if(!input.next().equals("1"))
-			{
-			   cont = false;
-			}
+			if(!input.next().equals("1"))
+				cont = false;
 		}
 		goodbye();
 	}	
@@ -907,7 +917,8 @@ public class App implements Testable
 		System.out.println("How much is the check?");
 		double amt = verifyAmount();
 		withdraw(acctId,amt);
-  }
+		createTransaction("",acctId,true,amt,"WRITE-CHECK");
+  	}
 		
 
 	
