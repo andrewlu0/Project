@@ -23,6 +23,9 @@ public class Main
 		App app = new App();                        // We need the default constructor of your App implementation.  Make sure such
 													// constructor exists.
 		String r = app.initializeSystem();         // We'll always call this function before testing your system.
+		
+		//!!!!!!!!!!!!!
+		//DANGEROUS!!!!
 		//System.out.println(app.dropTables());
 		//System.out.println(app.createTables());
 		
@@ -31,7 +34,7 @@ public class Main
 		if( r.equals( "0" ) )
 		{
 			//app.exampleAccessToDB();                // Example on how to connect to the DB.
-			app.startATMInterface();
+			//app.startATMInterface();
 			app.startBankTellerInterface();
 			// Example tests.  We'll overwrite your Main.main() function with our final tests.
 			r = app.listClosedAccounts();
