@@ -144,5 +144,4 @@ interface Testable
 	 */
 	String listClosedAccounts();
 
-	String withdraw( String accountId, double amount );
 }
