@@ -563,6 +563,12 @@ public class App implements Testable
 	{
 		if(verifyAcct(accountId) && verifyAmt(amount))
 		{
+			String[] types = {"POCKET"};
+			if(!checkValidType(accountId, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
 			String linkedAid;
 
 			try( Statement statement = _connection.createStatement() )
@@ -623,19 +629,11 @@ public class App implements Testable
 	{
 		boolean cont = true;
 		String acctId = "invalid";
-		while(cont)
-		{
+
 			acctId = acctInterface();
 			
-			String[] types = {"POCKET"};
-			if(!checkValidType(acctId, types))
-			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
-			}
-			else{
-				cont = false;
-			}
-		}
+			
+	
 		double pockDoub = -1.0;
 		cont = true;
 		while(cont)
@@ -665,7 +663,100 @@ public class App implements Testable
 	@Override
 	public String payFriend( String from, String to, double amount )
 	{
-		return "0stub";
+		if(verifyAcct(from) && acctExists(to) && !isClosed(to) && verifyAmt(amount))
+		{
+			String[] types = {"POCKET"};
+			if(!checkValidType(from, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
+			if(!checkValidType(to, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
+
+
+			try( Statement statement = _connection.createStatement() )
+			{
+
+				String result;
+				if(chargePocketFlatFee(from))
+				{
+					result = takeFrom(from, amount+5.0);
+				}
+				else
+					result = takeFrom(from, amount);
+				
+
+				String[] report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				String newFromBalance = report[2];
+
+				if(chargePocketFlatFee(to))
+				{
+					result = giveToNotYours(to, amount-5.0);
+				}
+				else
+					result = giveToNotYours(to, amount);
+
+				report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				else
+					return "0 " + newFromBalance + " " + report[2];
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
+		}
+		else
+			return "1";
+	}
+
+	private void payFriendInterface()
+	{
+		System.out.println("Choose account to take from: ");
+		String from = acctInterface();
+		System.out.println("Choose account to give to: ");
+		String to = getAcct();
+			
+			
+	
+		double pockDoub = -1.0;
+		boolean cont = true;
+		while(cont)
+		{
+			pockDoub = amtInterface();
+			if(pockDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+		
+		
+		String result = payFriend( from, to, pockDoub);
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the top-up, aborting...");
+		}
+		else{
+			System.out.println("Pay Friend Successful! Balance of From Account is $" + report[1] + " and balance of To Account is $" + report[2] +".");
+		}
 	}
 	/**
 	 * Another example.
@@ -852,7 +943,7 @@ public class App implements Testable
 			wireHelper();
 		} else if(actIn.equals("7"))
 		{
-			payfriendHelper();
+			payFriendInterface();
 		} else {
 			System.out.println("Invalid input, please try again!");
 			transact();
@@ -956,7 +1047,41 @@ public class App implements Testable
 		{
 			return "1";
 		}
-	}
+	  }
+
+	  public String giveToNotYours( String accountId, double amount )
+	{
+
+
+			double currBalance = 0.0;
+			String result = showBalance(accountId);
+
+			if(result.equals("1"))
+			{
+				System.out.println("Couldn't get balance, abort...");
+				return "1";
+			}
+			else
+			{
+				String[] report = result.split(" ");
+
+				currBalance = Double.parseDouble(report[1]);
+			}
+
+			double newBalance = currBalance + amount;
+
+			try( Statement statement = _connection.createStatement() )
+			{
+				statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+				return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
+		}
+
 
 
 	private String acctInterface()
@@ -1152,10 +1277,7 @@ public class App implements Testable
 
 	}
 
-	private void payfriendHelper()
-	{
-
-	}
+	
 
 	private void closeAccount(String acctId)
 	{
