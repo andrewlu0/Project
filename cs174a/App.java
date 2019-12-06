@@ -12,6 +12,7 @@ import javax.lang.model.util.ElementScanner6;
 import oracle.jdbc.pool.OracleDataSource;
 import oracle.jdbc.OracleConnection;
 import java.lang.*;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
 /**
@@ -629,7 +630,7 @@ public class App implements Testable
 
 		if(report[0].equals("1"))
 		{
-			System.out.println("ERROR: Something went wrong with the withdrawal, aborting...");
+			System.out.println("ERROR: Something went wrong with the purchase, aborting...");
 		}
 		else{
 			System.out.println("Purchase Successful! Balance of Account " + acctId + " went from $" + report[1] + " to $" + report[2] +".");
@@ -648,12 +649,12 @@ public class App implements Testable
 			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
 			if(!checkValidType(from, types))
 			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				System.out.println("You cannot perform a transfer on a non-pocket account, please choose another account");
 				return "1";
 			}
 			if(!checkValidType(to, types))
 			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				System.out.println("You cannot perform a transfer on a non-pocket account, please choose another account");
 				return "1";
 			}
 
@@ -841,7 +842,7 @@ public class App implements Testable
 			String[] types = {"POCKET"};
 			if(!checkValidType(accountId, types))
 			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				System.out.println("You cannot perform a collect on a non-pocket account, please choose another account");
 				return "1";
 			}
 			String linkedAid;
@@ -947,12 +948,12 @@ public class App implements Testable
 			String[] types = {"POCKET"};
 			if(!checkValidType(from, types))
 			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				System.out.println("You cannot perform pay friend on a non-pocket account, please choose another account");
 				return "1";
 			}
 			if(!checkValidType(to, types))
 			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				System.out.println("You cannot perform pay friend on a non-pocket account, please choose another account");
 				return "1";
 			}
 
@@ -1031,7 +1032,7 @@ public class App implements Testable
 
 		if(report[0].equals("1"))
 		{
-			System.out.println("ERROR: Something went wrong with the top-up, aborting...");
+			System.out.println("ERROR: Something went wrong with pay friend, aborting...");
 		}
 		else{
 			System.out.println("Pay Friend Successful! Balance of From Account is $" + report[1] + " and balance of To Account is $" + report[2] +".");
@@ -1215,7 +1216,7 @@ public class App implements Testable
 
 	public void signIn()
 	{
-		System.out.println("What is your name?");
+		System.out.println("What is your Tax ID?");
 		String name = input.next();
 
 		System.out.println("Please insert your PIN:");
@@ -1240,7 +1241,7 @@ public class App implements Testable
 			{
 				while( resultSet.next() )
 				{
-					String tempName = resultSet.getString(1);
+					String tempName = resultSet.getString(3);
 					String tempPin = resultSet.getString(2);
 					if (tempName.trim().equals(name.trim()) && tempPin.trim().equals(inputPin.trim()))
 					{
@@ -1259,7 +1260,67 @@ public class App implements Testable
 		return false;
 	}
 
+	public void startSystemsInterface()
+	{
+		String[] actions = {"Bank Teller", "Customer ATM", "Set System Date", "Exit"};
+		System.out.println("Welcome to Austin and Andrew's Banking System!");
+		System.out.println("What would you like to do?:");
 
+
+		for(int i = 0; i < actions.length; i++)
+		{
+			System.out.println(i + ":\t" + actions[i]);
+		}
+
+		while(true)
+		{
+			String actIn = input.next().trim();
+
+			if(actIn.equals("0"))
+			{
+				startBankTellerInterface();
+			} else if(actIn.equals("1"))
+			{
+				startATMInterface();
+			} else if(actIn.equals("2"))
+			{
+				setDateInterface();
+			} else if(actIn.equals("3"))
+			{
+				goodbye();
+			} else {
+				System.out.println("Invalid input, please try again!");
+			}
+		}
+	}
+
+	private void setDateInterface()
+	{
+
+		int year = 0;
+		int month = 0;
+		int day = 0;
+		try{
+			System.out.println("What year would you like to set it to?");
+			year = Integer.parseInt(input.next());
+
+			System.out.println("What month would you like to set it to?");
+			month = Integer.parseInt(input.next());
+
+			System.out.println("What day would you like to set it to?");
+			day = Integer.parseInt(input.next());
+		}
+		catch(NumberFormatException e)
+		{
+			System.out.println("Invalid Input, try again");
+			setDateInterface();
+		}
+
+		System.out.println("Date set to: " + setDate( year, month, day )); 
+
+		System.out.println("Date set! Returning to main menu...");
+		startSystemsInterface();
+	}
 	
 
 	private void transact()
@@ -1300,7 +1361,7 @@ public class App implements Testable
 			payFriendInterface();
 		} else if(actIn.equals("8"))
 		{
-			goodbye(); 
+			startSystemsInterface();
 		} else {
 			System.out.println("Invalid input, please try again!");
 			transact();
@@ -1621,6 +1682,11 @@ public class App implements Testable
 			return true;
 		}
 	}
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 355d0029273c5ccef94b7be1684ecc723ab8b127
 
 	private void closeAccount(String acctId)
 	{
@@ -1762,7 +1828,7 @@ public class App implements Testable
 					deleteTransactions();
 					break;
 				case "9":
-					goodbye();
+					startSystemsInterface();
 				default:
 					System.out.println("Invalid input, please try again!");
 					startBankTellerInterface();
