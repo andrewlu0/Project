@@ -376,6 +376,13 @@ public class App implements Testable
 	{
 		if(verifyAcct(accountId) && verifyAmt(amount))
 		{
+
+			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
+			if(!checkValidType(accountId, types))
+			{
+				System.out.println("You cannot perform a deposit on a account of this type");
+				return "1";
+			}
 			double currBalance = 0.0;
 			String result = showBalance(accountId);
 
@@ -414,19 +421,9 @@ public class App implements Testable
 	{
 		boolean cont = true;
 		String acctId = "invalid";
-		while(cont)
-		{
+
 			acctId = acctInterface();
 
-			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
-			if(!checkValidType(acctId, types))
-			{
-				System.out.println("You cannot perform a deposit on a account of this type, please choose another account");
-			}
-			else{
-				cont = false;
-			}
-		}
 		double depDoub = -1.0;
 		cont = true;
 		while(cont)
@@ -456,6 +453,12 @@ public class App implements Testable
 	{	
 			if(verifyAcct(accountId) && verifyAmt(amount))
 			{
+				String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
+				if(!checkValidType(accountId, types))
+				{
+					System.out.println("You cannot perform a withdrawal on a account of this type");
+					return "1";
+				}
 				double currBalance = 0.0;
 				String result = showBalance(accountId);
 
@@ -502,19 +505,9 @@ public class App implements Testable
 	{
 		boolean cont = true;
 		String acctId = "invalid";
-		while(cont)
-		{
+
 			acctId = acctInterface();
 
-			String[] types = {"INTEREST_CHECKING", "STUDENT_CHECKING", "SAVINGS"};
-			if(!checkValidType(acctId, types))
-			{
-				System.out.println("You cannot perform a withdrawal on a account of this type, please choose another account");
-			}
-			else{
-				cont = false;
-			}
-		}
 
 		double withDoub = -1.0;
 		cont = true;
@@ -550,7 +543,7 @@ public class App implements Testable
 			try( ResultSet resultSet = statement.executeQuery( "select aid, balance from account" ) )
 			{
 				while( resultSet.next() ){
-					if(resultSet.getString(1).trim().equals(accountId))
+					if(resultSet.getString(1).trim().equals(accountId.trim()))
 					{
 						return "0 " + resultSet.getString(2);
 					}
@@ -568,27 +561,107 @@ public class App implements Testable
 	@Override
 	public String topUp( String accountId, double amount )
 	{
-		String linkedAid;
-		try( Statement statement = _connection.createStatement() )
+		if(verifyAcct(accountId) && verifyAmt(amount))
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select aid from linked_to where poc_aid = " + accountId ) )
-			{
-				if(resultSet.next())
-					linkedAid = resultSet.getString(1);
-			}
+			String linkedAid;
 
-			/*if(!take)
+			try( Statement statement = _connection.createStatement() )
 			{
-				System.out.println("Aborting top-up...");
-				return "1 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", currBalance);
-			}*/
+				try( ResultSet resultSet = statement.executeQuery( "select aid from linked_to where poc_aid = " + accountId ) )
+				{
+					if(resultSet.next())
+						linkedAid = resultSet.getString(1);
+					else
+					{
+						System.out.println("Cannot find Pocket Account's linked account");
+						return "1";
+					}
+				}
+				String result;
+				if(chargePocketFlatFee(accountId))
+				{
+					System.out.println(linkedAid);
+					result = takeFrom(linkedAid, amount+5.0);
+				}
+				else
+					result = takeFrom(linkedAid, amount);
+				
+
+				String[] report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				String newLinkedBalance = report[2];
+
+				result = giveTo(accountId, amount);
+
+				report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				else
+					return "0 " + newLinkedBalance + " " + report[2];
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
 		}
-		catch( final SQLException e )
-		{
-			System.err.println( e.getMessage() );
-		}
-		return "stub";
+		else
+			return "1";
+
 	}
+
+	private void topUpInterface()
+	{
+		boolean cont = true;
+		String acctId = "invalid";
+		while(cont)
+		{
+			acctId = acctInterface();
+			
+			String[] types = {"POCKET"};
+			if(!checkValidType(acctId, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+			}
+			else{
+				cont = false;
+			}
+		}
+		double pockDoub = -1.0;
+		cont = true;
+		while(cont)
+		{
+			pockDoub = amtInterface();
+			if(pockDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+		
+		
+		String result = topUp( acctId, pockDoub);
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the top-up, aborting...");
+		}
+		else{
+			System.out.println("Top-Up Successful! Balance of Pocket Account is $" + report[2] + " and balance of linked account is $" + report[1] +".");
+		}
+		
+	}
+
+
 	@Override
 	public String payFriend( String from, String to, double amount )
 	{
@@ -800,6 +873,92 @@ public class App implements Testable
 		}
 	}
 
+	public String takeFrom( String accountId, double amount )
+	{	
+			if(verifyAcct(accountId) && verifyAmt(amount))
+			{
+				double currBalance = 0.0;
+				String result = showBalance(accountId);
+
+				if(result.equals("1"))
+				{
+					System.out.println("Couldn't get balance, abort...");
+					return "1";
+				}
+				else
+				{
+					String[] report = result.split(" ");
+
+					currBalance = Double.parseDouble(report[1]);
+				}
+
+				double newBalance = currBalance - amount;
+
+				if(newBalance < 0.0)
+				{
+					System.out.println("Insufficient funds, withdrawal aborted");
+					return "1";
+				}
+				else if(newBalance < 0.01)
+				{
+					System.out.println("Balance of account after withdrawal is < 0.01, account will be closed after process finishes");
+					closeAccount(accountId);
+				}
+				try( Statement statement = _connection.createStatement() )
+				{
+					statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+					return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
+				}
+				catch( final SQLException e )
+				{
+					System.err.println( e.getMessage() );
+					return "1";
+				}
+			}
+			else
+				return "1";
+	}
+
+	public String giveTo( String accountId, double amount )
+	{
+		if(verifyAcct(accountId) && verifyAmt(amount))
+		{
+
+			double currBalance = 0.0;
+			String result = showBalance(accountId);
+
+			if(result.equals("1"))
+			{
+				System.out.println("Couldn't get balance, abort...");
+				return "1";
+			}
+			else
+			{
+				String[] report = result.split(" ");
+
+				currBalance = Double.parseDouble(report[1]);
+			}
+
+			double newBalance = currBalance + amount;
+
+			try( Statement statement = _connection.createStatement() )
+			{
+				statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+				return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
+		}
+		else
+		{
+			return "1";
+		}
+	}
+
+
 	private String acctInterface()
 	{
 		String aid = getAcct();
@@ -969,50 +1128,7 @@ public class App implements Testable
 	}
 	
 
-	private void topUpInterface()
-	{
-		boolean cont = true;
-		String acctId = "invalid";
-		while(cont)
-		{
-			acctId = acctInterface();
 
-			String[] types = {"POCKET"};
-			if(!checkValidType(acctId, types))
-			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
-			}
-			else{
-				cont = false;
-			}
-		}
-		double pockDoub = -1.0;
-		cont = true;
-		while(cont)
-		{
-			pockDoub = amtInterface();
-			if(pockDoub != -1.0)
-			{
-				cont = false;
-			}
-		}
-		if(chargePocketFlatFee(acctId))
-		{
-			pockDoub += 5.0;
-		}
-
-		String result = topUp( acctId, pockDoub);
-		String[] report = result.split(" ");
-
-		if(report[0].equals("1"))
-		{
-			System.out.println("ERROR: Something went wrong with the deposit, aborting...");
-		}
-		else{
-			System.out.println("Top-Up Successful! Balance of Account " + acctId + " is $" + report[1] + " and balance of linked account is $" + report[2] +".");
-		}
-		
-	}
 
 	
 
