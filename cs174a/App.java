@@ -1224,20 +1224,104 @@ public class App implements Testable
 	public void signIn()
 	{
 		System.out.println("What is your Tax ID?");
-		String name = input.next();
-
-		System.out.println("Please insert your PIN:");
-		String inputPin = input.next();
-
-		if(!verifySignIn(name, inputPin))
+		String tid = input.next();
+		if(!verifyTaxId(tid))
 		{
-			System.out.println("INVALID LOGIN: Please try again.");
+			System.out.println("INVALID Tax ID: Please try again.");
 			signIn();
+		}
+		else{
+			System.out.println("Please insert your PIN:");
+			String inputPin = input.next();
+
+			if(!verifyPin(inputPin))
+			{
+				System.out.println("INVALID PIN: Please try again.");
+				signIn();
+			}
 		}
 
 	}
 
-	private boolean verifySignIn(String name, String inputPin)
+	private boolean verifyPin(String pin)
+	{
+		String query = "select name, pin, tid from Customer";
+
+		pin = Integer.toString(pin.hashCode());
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery(query) )
+			{
+				while( resultSet.next() )
+				{
+					String tempTid = resultSet.getString(3);
+					String tempPin = resultSet.getString(2);
+					if (tempTid.trim().equals(customerTaxID.trim()) && tempPin.trim().equals(pin.trim()))
+					{
+						System.out.println("PIN VERIFIED");
+						return true;
+					}
+				}
+				
+			}
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+		return false;
+	}
+
+	private boolean setPin(String oldPin, String newPin)
+	{
+		if(verifyPin(oldPin))
+		{
+			try( Statement statement = _connection.createStatement() )
+				{
+					if(newPin.trim().length() == 4 && isInteger(newPin))
+					statement.executeQuery( "update customer set pin = " + newPin.hashCode() + " where tid = \'" + customerTaxID+ "\'");
+					return true;
+				}
+				catch( final SQLException e )
+				{
+					System.err.println( e.getMessage() );
+					return false;
+				}
+		}
+		else{
+			System.out.println("OldPin does not match TID, abort...");
+			return false;
+		}
+	}
+
+	private void setPinInterface()
+	{
+		System.out.println("What is your old PIN?");
+		String oldPin = input.next();
+
+		System.out.println("What is your new PIN?");
+		String newPin = input.next();
+
+		if(setPin(oldPin, newPin))
+		{
+			System.out.println("Pin Successfully Set");
+		}
+
+	}
+
+	public boolean isInteger(String s) {
+		try { 
+			Integer.parseInt(s); 
+		} catch(NumberFormatException e) { 
+			return false; 
+		} catch(NullPointerException e) {
+			return false;
+		}
+		// only got here if we didn't return false
+		return true;
+	}
+
+	private boolean verifyTaxId(String tid)
 	{
 		String query = "select name, pin, tid from Customer";
 
@@ -1248,12 +1332,10 @@ public class App implements Testable
 			{
 				while( resultSet.next() )
 				{
-					String tempName = resultSet.getString(3);
-					String tempPin = resultSet.getString(2);
-					if (tempName.trim().equals(name.trim()) && tempPin.trim().equals(inputPin.trim()))
+					String tempTid = resultSet.getString(3);
+					if (tempTid.trim().equals(tid.trim()))
 					{
-						System.out.println("PIN VERIFIED");
-						customerTaxID = resultSet.getString(3);
+						customerTaxID = tid.trim();
 						return true;
 					}
 				}
@@ -1332,7 +1414,7 @@ public class App implements Testable
 
 	private void transact()
 	{
-		String[] actions = {"Deposit", "Top-Up", "Withdrawal", "Purchase", "Transfer", "Collect", "Wire", "Pay-Friend", "Exit"};
+		String[] actions = {"Deposit", "Top-Up", "Withdrawal", "Purchase", "Transfer", "Collect", "Wire", "Pay-Friend","Set Pin", "Exit"};
 		System.out.println("What would you like to do?:");
 
 		for(int i = 0; i < actions.length; i++)
@@ -1368,14 +1450,17 @@ public class App implements Testable
 			payFriendInterface();
 		} else if(actIn.equals("8"))
 		{
+			setPinInterface();
+		} else if(actIn.equals("9"))
+		{
 			startSystemsInterface();
-		} else {
+		}else {
 			System.out.println("Invalid input, please try again!");
 			transact();
 			goodbye();
 		}
 
-		System.out.println("Your transaction is complete!");
+		System.out.println("Your transaction has ended");
 		transact();
 	}
 
