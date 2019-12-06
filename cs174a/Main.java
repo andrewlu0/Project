@@ -30,15 +30,16 @@ public class Main
 		//System.out.println(app.setDate(2019,12,4));
 		if( r.equals( "0" ) )
 		{
-			app.exampleAccessToDB();                // Example on how to connect to the DB.
-			
+			//app.exampleAccessToDB();                // Example on how to connect to the DB.
+			//app.startBankTellerInterface();
 			// Example tests.  We'll overwrite your Main.main() function with our final tests.
 			r = app.listClosedAccounts();
 			System.out.println( r );
 
 			// Another example test.
-			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "account7", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
-			r = app.updateInterest(AccountType.SAVINGS,9.1);
+			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "account3", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
+			//r = app.updateInterest(AccountType.SAVINGS,9.1);
+			app.createTransaction("","388",-1,1,"DEPOSIT");
 			//app.createPocketAccount("pocket4","checking",29.9,"bbb");
 			System.out.println( r );
 		}
