@@ -900,22 +900,22 @@ public class App implements Testable
 					System.out.println(closed.substring(2,closed.length())+"\n");
 					break;
 				case "3":
-					enterCheckTransaction();
+					generateDTER();
 					break;
 				case "4":
-					enterCheckTransaction();
+					customerReport();
 					break;
 				case "5":
-					enterCheckTransaction();
+					addInterest();
 					break;
 				case "6":
-					enterCheckTransaction();
+					createAccount();
 					break;
 				case "7":
-					enterCheckTransaction();
+					deleteClosed();
 					break;
 				case "8":
-					enterCheckTransaction();
+					deleteTransactions();
 					break;
 				case "9":
 					goodbye();
@@ -940,11 +940,17 @@ public class App implements Testable
   	}
 
 	private void generateMonthlyStatement(){
+		if (!isLastDay()){
+			System.out.println("Can only generate statement on last day of month.\n");
+			return;
+		}
+		
 		System.out.println("Enter customer tax ID:");
 		String tid = input.next();
 		String aid = "";
 		String month = getDate().substring(5,7);
 		String year = getDate().substring(0,4);
+		Double total_sum = 0.0;
 		ArrayList<String> accounts = new ArrayList<String>();
 		ArrayList<Double> balances = new ArrayList<Double>();
 		ArrayList<String> owners = new ArrayList<String>();
@@ -985,6 +991,7 @@ public class App implements Testable
 			String temptype = "";
 			Double currentBalance = balances.get(i);
 			Double initialBalance = currentBalance;
+			total_sum += currentBalance;
 			try( Statement statement = _connection.createStatement() )
 			{
 				try( ResultSet resultSet = statement.executeQuery("select * from transaction "
@@ -996,6 +1003,7 @@ public class App implements Testable
 					while( resultSet.next() )
 					{
 						if (resultSet.getString(2).substring(0,4).equals(year) && resultSet.getString(2).substring(5,7).equals(month)){
+							// System.out.println(resultSet.getString(2).substring(0,4)+" "+resultSet.getString(2).substring(5,7));
 							net = String.format("%.2f", resultSet.getDouble(6));
 							if (aid.equals(resultSet.getString(4)) && resultSet.getString(7)!="ACCRUE-INTEREST"){
 								net = "-" + net;
@@ -1028,8 +1036,139 @@ public class App implements Testable
 			}
 			System.out.println("\n");
 		}
+		if (total_sum > 100000){
+			System.out.println("Warning: Insurance limit reached.\n");
+		}
 	}
-	
-		
+	//TODO 
+	private void generateDTER(){
+		if (!isLastDay()){
+			System.out.println("Can only generate DTER on last day of month.\n");
+			return;
+		}
+	}
+	private void customerReport(){
+		System.out.println("Enter customer tax ID:");
+		String tid = input.next();
+		String aid = "";
+		ArrayList<String> accounts = new ArrayList<String>();
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select aid,tid from own where tid=\'"+tid+"\'"))
+			{
+				while( resultSet.next() )
+				{
+					accounts.add(resultSet.getString(1));
+				}
+			}		
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+		}
+		System.out.println("Owned Accounts:");
+		String status = "";
+		for (int i = 0; i < accounts.size();i++){
+			aid = accounts.get(i);
+			try( Statement statement = _connection.createStatement() )
+			{
+				try( ResultSet resultSet = statement.executeQuery( "select is_closed from account where aid=\'"+aid+"\'"))
+				{
+					if( resultSet.next() )
+					{
+						status = (resultSet.getInt(1)>0) ? "Closed" : "Open";
+						System.out.println("Account ID: "+ aid + "\tStatus: " + status);
+					}
+				}		
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+			}
+		}
+	}	
+	//TODO
+	private void addInterest(){
+		if (!isLastDay()){
+			System.out.println("Can only add interest on last day of month.\n");
+			return;
+		}
+	}
+	private void createAccount(){
+		System.out.println("Enter account type:\n"
+							+"1:\tStudent Checking\n"
+							+"2:\tInterest Checking\n"
+							+"3:\tSavings\n"
+							+"4:\tPocket\n"
+							+"5:\tExit");
+		String acctype = input.next();
+		String id,tin;
+		AccountType atype;
+		System.out.println("Enter an account ID:");
+		id = input.next();
+		System.out.println("Enter primary owner's tax ID:");
+		tin = input.next();
+		System.out.println("Enter initial balance:");
+		double amt = verifyAmount();
+		if (acctype.equals("1") || acctype.equals("2") || acctype.equals("3")){
+			String name, address;
+			System.out.println("Enter primary owner's name:");
+			name = input.next();
+			System.out.println("Enter primary owner's address:");
+			address = input.next();
+			if (acctype.equals("1"))
+				atype = AccountType.STUDENT_CHECKING;
+			else if (acctype.equals("2"))
+				atype = AccountType.INTEREST_CHECKING;
+			else 
+				atype = AccountType.SAVINGS;
+			System.out.println("asdf");
+			if((createCheckingSavingsAccount(atype,id, amt, tin, name, address)).equals("0"))
+				System.out.println("Account created");
+			else
+				System.out.println("There was a problem creating the account.");
+		}
+		else if (acctype.equals("4")){
+			String lid;
+			atype = AccountType.POCKET;
+			System.out.println("Enter linked checking/savings account ID:");
+			lid = input.next();
+			createPocketAccount(id, lid, amt, tin);
+		}
+		else if (acctype.equals("5")){
+			startBankTellerInterface();
+		}
+		else{
+			System.out.println("Invalid input, please try again!");
+			createAccount();
+		}
+	}
+	//TODO
+	private void deleteClosed(){
+
+	}
+	//TODO
+	private void deleteTransactions(){
+
+	}
+	private boolean isLastDay(){
+		try( Statement statement = _connection.createStatement() )
+		{
+			try( ResultSet resultSet = statement.executeQuery( "select system_date from system_date "
+															  +"where system_date = last_day(system_date)"))
+			{
+				if(resultSet.next() )
+				{
+					return true;
+				}
+				return false;
+			}		
+		}
+		catch( final SQLException e )
+		{
+			System.err.println( e.getMessage() );
+			return false;
+		}
+	}
 
 }
