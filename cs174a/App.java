@@ -160,8 +160,8 @@ public class App implements Testable
 							+"FOREIGN KEY(tid) REFERENCES Customer(tid))";				
 		String create_transactions = "CREATE TABLE Transaction( trid INTEGER,"
                             +"t_date DATE NOT NULL,"
-                            +"to_aid INTEGER,"
-                            +"from_aid INTEGER,"
+                            +"to_aid CHAR(20),"
+                            +"from_aid CHAR(20),"
                             +"check_num INTEGER,"
                             +"amount DECIMAL(20,2),"
                             +"type CHAR(20),"
@@ -262,11 +262,12 @@ public class App implements Testable
 	@Override
 	public String createPocketAccount( String id, String linkedId, double initialTopUp, String tin ){
 		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate,type) values(\'"+id+"\','SB',"+initialTopUp+",\'"+tin+"\',0,0,'POCKET')";
-		String owns = "insert into own(aid,tid) values (\'"+id+"\',\'"+tin+"\') ";
+		String linked = "insert into linked_to values (\'"+id+"\',\'"+linkedId+"\')'";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
-			statement.executeQuery(owns);
+			statement.executeQuery(linked);
+			createOwn(id,tin);
 			withdraw(linkedId,initialTopUp);
 			return "0 " + id + " AccountType.POCKET " + initialTopUp + " " + tin;
 		}
@@ -276,15 +277,73 @@ public class App implements Testable
 			return "1";
 		}
 	}
-	
+	private void createOwn(String id, String tin){
+		String owns = "insert into own(aid,tid) values (\'"+id+"\',\'"+tin+"\') ";
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery(owns);
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage());
+		}
+	}
+	/**
+	 * Create a entry in Transaction table
+	 * @param to_acct Source of transaction, "" if NULL
+	 * @param from_acct Destination of transaction, "" if NULL
+	 * @param check Check number, -1 if NULL
+	 * @param ammount Ammount of transaction.
+	 * @param type Type of transaction.
+	 */
+	public void createTransaction(String to_acct,String from_acct,int check,double ammount,String type){
+		String query = "insert into transaction values(seq_tran.nextval,";
+		String date = "";
+		try( Statement statement = _connection.createStatement() )
+		{
+			ResultSet rs = statement.executeQuery("select * from system_date");
+			if (rs.next()){
+				date = rs.getString(1);
+				System.out.println(date);
+			}
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage());
+		}
+		query += "TO_DATE(\'" + date.substring(0,10) + "\',\'YYYY-MM-DD\'),";
+		query += (to_acct.length() > 0) ? "\'" + to_acct + "\',": "NULL,";
+		query += (from_acct.length() >0) ? "\'" + from_acct + "\'," : "NULL,";
+		query += (check >= 0 ) ? check + "," : "NULL,";
+		query += ammount + ",\'"+type+"\')";
+		System.out.println(query);
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery(query);
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage());
+		}
+	}
+	private void createModifies(int trid, String aid){
+		String query = "insert into modifies values(" + trid + ",\'" + aid + "\')";
+		try( Statement statement = _connection.createStatement() )
+		{
+			statement.executeQuery(query);
+		}
+		catch( SQLException e )
+		{
+			System.err.println( e.getMessage());
+		}
+	}
 	@Override
 	public String createCustomer( String accountId, String tin, String name, String address ){
 		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address+"\',1717)";
-		String create_own = "insert into own(aid,tid) values (\'"+accountId+"\',\'"+tin+"\')";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(create_c);
-			statement.executeQuery(create_own);
+			createOwn(accountId,tin);
 			return "0";
 		}
 		catch( SQLException e )
@@ -315,7 +374,6 @@ public class App implements Testable
 			return "1 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", currBalance);
 		}
 	}
-	@Override
 	public String withdraw( String accountId, double amount )
 	{
 		double currBalance = 0.0;
@@ -396,11 +454,10 @@ public class App implements Testable
 		else if (accountType == AccountType.STUDENT_CHECKING) interest_rate = 0.0;
 		else interest_rate = 4.8;
 		String query = "insert into account(aid,bb_name,balance,tid,is_closed,interest_rate,type) values(\'"+id+"\','SB',0,\'"+tin+"\',0,"+interest_rate+",\'"+accountType+"\')";
-		String owns = "insert into own(aid,tid) values (\'"+id+"\',\'"+tin+"\')";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(query);
-			statement.executeQuery(owns);
+			createOwn(id,tin);
 			deposit(id,initialBalance);
 			return "0 " + id + " " + accountType + " " + initialBalance + " " + tin;
 		}
@@ -616,6 +673,7 @@ public class App implements Testable
 	{
 		String amt = input.next();
 
+
 		try{
 			double amtDoub = Math.floor(Double.parseDouble(amt)) / 100.0;
 			if(amtDoub < 0.0)
@@ -734,6 +792,74 @@ public class App implements Testable
 	{
 
 	}
+	
+	//-------------------------------BANK TELLER INTERFACE-----------------------------------------
+	public void startBankTellerInterface()
+	{
+		boolean cont = true;
+		while(cont)
+		{
+			String[] actions = {"Enter Check Transaction", 
+								"Generate Monthly Statement",
+								"List Closed Accounts", 
+								"Generate Government Drug and Tax Evasion Report (DTER)", 
+								"Customer Report", 
+								"Add Interest:", 
+								"Create Account", 
+								"Delete Closed Accounts and Customers",
+								"Delete Transactions",
+								"Exit"};
+			System.out.println("What would you like to do?:");
+
+			for(int i = 0; i < actions.length; i++)
+			{
+				System.out.println(i + ":\t" + actions[i]);
+			}
+			String actIn = input.next();
+
+			switch(actIn){
+				case "0":
+					enterCheckTransaction();
+					break;
+				case "1":
+					enterCheckTransaction();
+					break;
+				case "2":
+					enterCheckTransaction();
+					break;
+				case "3":
+					enterCheckTransaction();
+					break;
+				case "4":
+					enterCheckTransaction();
+					break;
+				case "5":
+					enterCheckTransaction();
+					break;
+				case "6":
+					enterCheckTransaction();
+					break;
+				case "7":
+					enterCheckTransaction();
+					break;
+				case "8":
+					enterCheckTransaction();
+					break;
+				case "9":
+					goodbye();
+				default:
+					System.out.println("Invalid input, please try again!");
+					startBankTellerInterface();
+			}
+			System.out.println("Would you like to perform another action?\n1:\tYes\nAny Other Key:\tNo");
+      if(!input.next().equals("1"))
+			{
+			   cont = false;
+			}
+		}
+		goodbye();
+	}
+
 
 	private boolean checkValidType(String acctID, String[] validType)
 	{
@@ -764,7 +890,18 @@ public class App implements Testable
 		}
 	}
 
-	private void closeAccount(String acctId)
+	
+
+			
+	private void enterCheckTransaction(){
+		String acctId = getAcct();
+		System.out.println("How much is the check?");
+		double amt = verifyAmount();
+		withdraw(acctId,amt);
+  }
+		
+
+private void closeAccount(String acctId)
 	{
 		try(Statement statement = _connection.createStatement())
 		{
