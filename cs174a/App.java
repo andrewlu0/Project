@@ -267,6 +267,10 @@ public class App implements Testable
 		String sday = String.valueOf(day);
 		String currmonth = "";
 		String curryear = "";
+		if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31){
+			System.out.println("Please enter a valid date.");
+			return "1";
+		}
 		try( Statement statement = _connection.createStatement() )
 		{
 			ResultSet currdate = statement.executeQuery("select system_date from system_date");
@@ -402,7 +406,7 @@ public class App implements Testable
 	@Override
 	public String createCustomer( String accountId, String tin, String name, String address ){
 		String address_parse = address.replace("'","\'");
-		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',1717)";
+		String create_c = "insert into customer(tid,name,addr,pin) values (\'"+tin+"\',\'"+name+"\',\'"+address_parse+"\',"+String.valueOf(1717).hashCode()+")";
 		try( Statement statement = _connection.createStatement() )
 		{
 			statement.executeQuery(create_c);
