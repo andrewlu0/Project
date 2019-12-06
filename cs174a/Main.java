@@ -39,7 +39,7 @@ public class Main
 			// Another example test.
 			r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "account3", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
 			//r = app.updateInterest(AccountType.SAVINGS,9.1);
-			app.createTransaction("","388",-1,1,"DEPOSIT");
+			app.createTransaction("","388",true,1.3,"DEPOSIT");
 			//app.createPocketAccount("pocket4","checking",29.9,"bbb");
 			System.out.println( r );
 		}

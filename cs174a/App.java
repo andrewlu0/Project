@@ -137,6 +137,11 @@ public class App implements Testable
 							+"START WITH 1"
 							+"INCREMENT BY 1"
 							+"CACHE 10";
+		String create_check_id = "CREATE SEQUENCE seq_check"
+							+"MINVALUE 1"
+							+"START WITH 1"
+							+"INCREMENT BY 1"
+							+"CACHE 10";
 		String create_customer = "CREATE TABLE CUSTOMER (" 
 							+"tid CHAR(20),"
 							+"Name CHAR(20)	NOT NULL,"
@@ -197,6 +202,7 @@ public class App implements Testable
 			statement.executeQuery(create_modifies);
 			statement.executeQuery(create_linked_to);
 			statement.executeQuery(create_system_date);
+			statement.executeQuery(create_check_id);
 			//Set date to current date
 			Calendar calendar = Calendar.getInstance();
 			SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
@@ -296,7 +302,7 @@ public class App implements Testable
 	 * @param ammount Ammount of transaction.
 	 * @param type Type of transaction.
 	 */
-	public void createTransaction(String to_acct,String from_acct,int check,double ammount,String type){
+	public void createTransaction(String to_acct,String from_acct,boolean check,double ammount,String type){
 		String query = "insert into transaction values(seq_tran.nextval,";
 		String date = "";
 		try( Statement statement = _connection.createStatement() )
@@ -314,7 +320,7 @@ public class App implements Testable
 		query += "TO_DATE(\'" + date.substring(0,10) + "\',\'YYYY-MM-DD\'),";
 		query += (to_acct.length() > 0) ? "\'" + to_acct + "\',": "NULL,";
 		query += (from_acct.length() >0) ? "\'" + from_acct + "\'," : "NULL,";
-		query += (check >= 0 ) ? check + "," : "NULL,";
+		query += (check) ? "seq_check.nextval," : "NULL,";
 		query += ammount + ",\'"+type+"\')";
 		System.out.println(query);
 		try( Statement statement = _connection.createStatement() )
@@ -769,13 +775,7 @@ public class App implements Testable
 		System.out.println("How much is the check?");
 		double amt = verifyAmount();
 		withdraw(acctId,amt);
-		try( Statement statement = _connection.createStatement() )
-		{
-		
-		}
-		catch( final SQLException e )
-		{
-			System.err.println( e.getMessage() );
-		}
+		createTransaction("",acctId,);
+		createModifies();
 	}
 }
