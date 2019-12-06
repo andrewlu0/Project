@@ -674,7 +674,7 @@ public class App implements Testable
 				result = giveTo(to, amount);
 
 				report = result.split(" ");
-
+				createTransaction(to,from,false,amount,"TRANSFER");
 				if(report[0].equals("1"))
 				{
 					return "1";
@@ -776,6 +776,7 @@ public class App implements Testable
 
 				report = result.split(" ");
 
+				createTransaction(accountId, linkedAid, false, amount, "TOP-UP");
 				if(report[0].equals("1"))
 				{
 					return "1";
@@ -1686,10 +1687,10 @@ public class App implements Testable
 
 		try( Statement statement = _connection.createStatement() )
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select t_date from transactions where aid = " + acctId ) )
+			try( ResultSet resultSet = statement.executeQuery( "select t_date from transaction where to_aid = \'" + acctId +"\'") )
 			{
 				while( resultSet.next() )
-					if (resultSet.getString(1).substring(0,7).equals(year + "/"+ month))
+					if (resultSet.getString(1).substring(0,7).equals(year + "-"+ month))
 					{
 						System.out.println("Flat Fee charged already this month");
 						return false;
