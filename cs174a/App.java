@@ -936,18 +936,16 @@ public class App implements Testable
 					{
 						System.out.println("Flat Fee charged already this month");
 						return false;
-					}
-
+					}		
 			}
 		}
 		catch( final SQLException e )
 		{
 			System.err.println( e.getMessage() );
-			return false;
 		}
-		
 		System.out.println("First transaction for this pocket account this month, $5 flat fee will be charged");
 		return true;
+		
 	}
 	//-------------------------------BANK TELLER INTERFACE-----------------------------------------
 	public void startBankTellerInterface()
