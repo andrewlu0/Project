@@ -1244,7 +1244,7 @@ public class App implements Testable
 	{
 		String query = "select name, pin, tid from Customer";
 
-		//inputPin = Integer.toString(inputPin.hashCode());
+		inputPin = Integer.toString(inputPin.hashCode());
 		try( Statement statement = _connection.createStatement() )
 		{
 			try( ResultSet resultSet = statement.executeQuery(query) )
@@ -1276,7 +1276,7 @@ public class App implements Testable
 			try( Statement statement = _connection.createStatement() )
 				{
 					if(newPin.trim().length() == 4 && isInteger(newPin))
-					statement.executeQuery( "update customer set pin = " + newPin/*.hashCode()*/ + " where tid = \'" + customerTaxID+ "\'");
+					statement.executeQuery( "update customer set pin = " + newPin.hashCode() + " where tid = \'" + customerTaxID+ "\'");
 					return true;
 				}
 				catch( final SQLException e )
