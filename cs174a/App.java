@@ -446,6 +446,7 @@ public class App implements Testable
 			try( Statement statement = _connection.createStatement() )
 			{
 				statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+				createTransaction(accountId,"",false,amount,"DEPOSIT");
 				return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
 			}
 			catch( final SQLException e )
@@ -532,6 +533,7 @@ public class App implements Testable
 				try( Statement statement = _connection.createStatement() )
 				{
 					statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+					createTransaction("",accountId,false,amount,"WITHDRAW");
 					return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
 				}
 				catch( final SQLException e )
@@ -590,12 +592,14 @@ public class App implements Testable
 				if(chargePocketFlatFee(aid))
 				{
 					System.out.println(aid);
+					createTransaction("",aid,false,amount,"PURCHASE");
 					return takeFrom(aid, amount+5.0);
 				}
 				else
+				{
+					createTransaction("",aid,false,amount,"PURCHASE");
 					return takeFrom(aid, amount);
-				
-
+				}
 			}
 			else
 				return "1";
@@ -868,7 +872,6 @@ public class App implements Testable
 				
 
 				String[] report = result.split(" ");
-
 				if(report[0].equals("1"))
 				{
 					return "1";
@@ -884,9 +887,11 @@ public class App implements Testable
 				{
 					return "1";
 				}
-
 				else
+				{
+					createTransaction(linkedAid,accountId,false,amount,"COLLECT");
 					return "0 " + report[2] + " " + newPocketBalance;
+				}	
 			}
 			catch( final SQLException e )
 			{
@@ -981,7 +986,7 @@ public class App implements Testable
 					result = giveToNotYours(to, amount);
 
 				report = result.split(" ");
-
+				createTransaction(to,from,false,amount,"PAY-FRIEND");
 				if(report[0].equals("1"))
 				{
 					return "1";
@@ -1075,9 +1080,11 @@ public class App implements Testable
 				{
 					return "1";
 				}
-
 				else
+				{
+					createTransaction(to,from,false,amount,"WIRE");
 					return "0 " + newFromBalance + " " + report[2];
+				}		
 			}
 			catch( final SQLException e )
 			{
@@ -1281,13 +1288,13 @@ public class App implements Testable
 			purchaseInterface();
 		} else if(actIn.equals("4"))
 		{
-			transferHelper();
+			transferInterface();
 		} else if(actIn.equals("5"))
 		{
-			collectHelper();
+			collectInterface();
 		} else if(actIn.equals("6"))
 		{
-			//wireInterface();
+			wireInterface();
 		} else if(actIn.equals("7"))
 		{
 			payFriendInterface();
@@ -1614,16 +1621,6 @@ public class App implements Testable
 			return true;
 		}
 	}
-	
-	private void transferHelper()
-	{
-
-	}
-
-	private void collectHelper()
-	{
-
-	}
 
 	private void closeAccount(String acctId)
 	{
@@ -1687,7 +1684,8 @@ public class App implements Testable
 
 		try( Statement statement = _connection.createStatement() )
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select t_date from transaction where to_aid = \'" + acctId +"\'") )
+			try( ResultSet resultSet = statement.executeQuery( "select t_date from transaction where to_aid = \'" + acctId +"\'"
+																+" or from_aid=\'" + acctId +"\'")) 
 			{
 				while( resultSet.next() )
 					if (resultSet.getString(1).substring(0,7).equals(year + "-"+ month))
@@ -1740,7 +1738,10 @@ public class App implements Testable
 				case "2":
 					System.out.println("Closed accounts:");
 					String closed = listClosedAccounts();
-					System.out.println(closed.substring(2,closed.length())+"\n");
+					if (closed.length()==1)
+						System.out.println("No closed accounts.");
+					else
+						System.out.println(closed.substring(2,closed.length())+"\n");
 					break;
 				case "3":
 					generateDTER();
@@ -1807,7 +1808,6 @@ public class App implements Testable
 				}
 				while( resultSet.next() )
 				{
-					System.out.println(resultSet.getString(1));
 					accounts.add(resultSet.getString(1));
 				}
 			}		
