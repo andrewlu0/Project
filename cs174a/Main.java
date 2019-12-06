@@ -35,7 +35,8 @@ public class Main
 		{
 			//app.exampleAccessToDB();                // Example on how to connect to the DB.
 			//app.dropTables();
-			app.createTables();
+			//app.createTables();
+			//r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "43942", 1,289.0, "361721022", "Alfred Hitchcock", "6667 El Colegio #40");
 			app.startSystemsInterface();
 			//app.startATMInterface();
 			//app.startBankTellerInterface();
@@ -48,7 +49,7 @@ public class Main
 			// Another example test.
 			//r = app.createCheckingSavingsAccount( AccountType.SAVINGS, "334", 1234.56, "theTaxIasdfD", "Im YoungMing", "Known");
 			//r = app.updateInterest(AccountType.SAVINGS,9.1);
-			app.createTransaction("334","",false,11111.3,"DEPOSIT");
+			//app.createTransaction("334","",false,11111.3,"DEPOSIT");
 			//app.createPocketAccount("pocket4","checking",29.9,"bbb");
 			System.out.println( r );
 		}
