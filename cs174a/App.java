@@ -573,6 +573,62 @@ public class App implements Testable
 		}
 	}
 
+	private String purchase(String aid, double amount)
+	{
+		if(verifyAcct(aid) && verifyAmt(amount))
+			{
+				String[] types = {"POCKET"};
+				if(!checkValidType(aid, types))
+				{
+					System.out.println("You cannot perform a purchase on a account of this type");
+					return "1";
+				}
+
+				if(chargePocketFlatFee(aid))
+				{
+					System.out.println(aid);
+					return takeFrom(aid, amount+5.0);
+				}
+				else
+					return takeFrom(aid, amount);
+				
+
+			}
+			else
+				return "1";
+	}
+
+	private void purchaseInterface(){
+		boolean cont = true;
+		String acctId = "invalid";
+
+			acctId = acctInterface();
+
+
+		double withDoub = -1.0;
+		cont = true;
+		while(cont)
+		{
+			withDoub = amtInterface();
+			if(withDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+
+		String result = purchase(acctId, withDoub);
+
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the withdrawal, aborting...");
+		}
+		else{
+			System.out.println("Purchase Successful! Balance of Account " + acctId + " went from $" + report[1] + " to $" + report[2] +".");
+		}
+	}
+
 
 	@Override
 	public String showBalance( String accountId )
@@ -603,6 +659,12 @@ public class App implements Testable
 	{
 		if(verifyAcct(accountId) && verifyAmt(amount))
 		{
+			String[] types = {"POCKET"};
+			if(!checkValidType(accountId, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
 			String linkedAid;
 
 			try( Statement statement = _connection.createStatement() )
@@ -663,19 +725,11 @@ public class App implements Testable
 	{
 		boolean cont = true;
 		String acctId = "invalid";
-		while(cont)
-		{
+
 			acctId = acctInterface();
 			
-			String[] types = {"POCKET"};
-			if(!checkValidType(acctId, types))
-			{
-				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
-			}
-			else{
-				cont = false;
-			}
-		}
+			
+	
 		double pockDoub = -1.0;
 		cont = true;
 		while(cont)
@@ -705,7 +759,100 @@ public class App implements Testable
 	@Override
 	public String payFriend( String from, String to, double amount )
 	{
-		return "0stub";
+		if(verifyAcct(from) && acctExists(to) && !isClosed(to) && verifyAmt(amount))
+		{
+			String[] types = {"POCKET"};
+			if(!checkValidType(from, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
+			if(!checkValidType(to, types))
+			{
+				System.out.println("You cannot perform a top-up on a non-pocket account, please choose another account");
+				return "1";
+			}
+
+
+			try( Statement statement = _connection.createStatement() )
+			{
+
+				String result;
+				if(chargePocketFlatFee(from))
+				{
+					result = takeFrom(from, amount+5.0);
+				}
+				else
+					result = takeFrom(from, amount);
+				
+
+				String[] report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				String newFromBalance = report[2];
+
+				if(chargePocketFlatFee(to))
+				{
+					result = giveToNotYours(to, amount-5.0);
+				}
+				else
+					result = giveToNotYours(to, amount);
+
+				report = result.split(" ");
+
+				if(report[0].equals("1"))
+				{
+					return "1";
+				}
+
+				else
+					return "0 " + newFromBalance + " " + report[2];
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
+		}
+		else
+			return "1";
+	}
+
+	private void payFriendInterface()
+	{
+		System.out.println("Choose account to take from: ");
+		String from = acctInterface();
+		System.out.println("Choose account to give to: ");
+		String to = getAcct();
+			
+			
+	
+		double pockDoub = -1.0;
+		boolean cont = true;
+		while(cont)
+		{
+			pockDoub = amtInterface();
+			if(pockDoub != -1.0)
+			{
+				cont = false;
+			}
+		}
+		
+		
+		String result = payFriend( from, to, pockDoub);
+		String[] report = result.split(" ");
+
+		if(report[0].equals("1"))
+		{
+			System.out.println("ERROR: Something went wrong with the top-up, aborting...");
+		}
+		else{
+			System.out.println("Pay Friend Successful! Balance of From Account is $" + report[1] + " and balance of To Account is $" + report[2] +".");
+		}
 	}
 	/**
 	 * Another example.
@@ -838,7 +985,6 @@ public class App implements Testable
 			{
 				while( resultSet.next() )
 				{
-					System.out.println(resultSet.getString(1));
 					String temp = resultSet.getString(1);
 					if (temp.trim().equals(inputPin.trim()))
 					{
@@ -880,7 +1026,7 @@ public class App implements Testable
 			withdrawalInterface();
 		} else if(actIn.equals("3"))
 		{
-			purchaseHelper();
+			purchaseInterface();
 		} else if(actIn.equals("4"))
 		{
 			transferHelper();
@@ -892,7 +1038,7 @@ public class App implements Testable
 			wireHelper();
 		} else if(actIn.equals("7"))
 		{
-			payfriendHelper();
+			payFriendInterface();
 		} else {
 			System.out.println("Invalid input, please try again!");
 			transact();
@@ -996,7 +1142,41 @@ public class App implements Testable
 		{
 			return "1";
 		}
-	}
+	  }
+
+	  public String giveToNotYours( String accountId, double amount )
+	{
+
+
+			double currBalance = 0.0;
+			String result = showBalance(accountId);
+
+			if(result.equals("1"))
+			{
+				System.out.println("Couldn't get balance, abort...");
+				return "1";
+			}
+			else
+			{
+				String[] report = result.split(" ");
+
+				currBalance = Double.parseDouble(report[1]);
+			}
+
+			double newBalance = currBalance + amount;
+
+			try( Statement statement = _connection.createStatement() )
+			{
+				statement.executeQuery( "update account set balance = " + newBalance + " where aid = \'" + accountId+ "\'");
+				return "0 " + String.format("%.2f", currBalance) + " " + String.format("%.2f", newBalance);
+			}
+			catch( final SQLException e )
+			{
+				System.err.println( e.getMessage() );
+				return "1";
+			}
+		}
+
 
 
 	private String acctInterface()
@@ -1085,7 +1265,7 @@ public class App implements Testable
 	{
 		try( Statement statement = _connection.createStatement() )
 		{
-			try( ResultSet resultSet = statement.executeQuery( "select tid from Account where aid = " + aid ) )
+			try( ResultSet resultSet = statement.executeQuery( "select tid from own where aid = " + aid ) )
 			{
 				if(resultSet.next())
 				{
@@ -1135,7 +1315,7 @@ public class App implements Testable
 
 	private double amtInterface()
 	{
-		System.out.println("What amount would you like to deposit?");
+		System.out.println("What amount would you like to transact?");
 		String amt = input.next();
 		double amtDoub = 0.0;
 		try{
@@ -1172,10 +1352,7 @@ public class App implements Testable
 
 	
 
-	private void purchaseHelper()
-	{
-		
-	}
+
 
 	private void transferHelper()
 	{
@@ -1192,10 +1369,7 @@ public class App implements Testable
 
 	}
 
-	private void payfriendHelper()
-	{
-
-	}
+	
 
 	private void closeAccount(String acctId)
 	{
